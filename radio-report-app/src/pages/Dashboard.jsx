@@ -153,7 +153,7 @@ export default function Dashboard() {
                 <div className="py-2 flex justify-start relative z-40" ref={menuRef}>
                     <button
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className="p-1.5 rounded-md bg-white border border-teal-200 hover:bg-teal-50 text-teal-700 shadow-sm transition-colors"
+                        className="p-1.5 rounded-lg bg-white border-2 border-teal-100 hover:bg-teal-50 text-teal-700 shadow-[0_4px_0_#99f6e4] active:shadow-none active:translate-y-[4px] transition-all duration-150 ease-out"
                         title="Menu"
                     >
                         {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -180,10 +180,10 @@ export default function Dashboard() {
                     )}
                 </div>
 
-                <section className="bg-brand-search-bg p-5 w-full rounded-lg mb-12 shadow-sm relative">
+                <section className="bg-gradient-to-br from-[#fffdf0] to-brand-search-bg p-6 w-full rounded-2xl mb-12 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] relative border border-white/50 ring-1 ring-black/5">
 
                     {/* Search Box */}
-                    <div className="bg-brand-search-inner p-4 rounded mb-5 border border-blue-200">
+                    <div className="bg-gradient-to-br from-[#e6f2ff] to-brand-search-inner p-5 rounded-xl mb-6 shadow-inner border border-blue-100/50">
                         {/* Row 1 */}
                         <div className="flex flex-wrap gap-4 mb-4">
                             <div className="flex items-center gap-2">
@@ -194,7 +194,7 @@ export default function Dashboard() {
                                     value={searchParams.name}
                                     onChange={handleChange}
                                     placeholder="Patient Name"
-                                    className="p-1.5 w-44 border border-gray-300 rounded"
+                                    className="p-2 w-44 border-2 border-blue-100 rounded-lg shadow-inner focus:shadow-md focus:border-blue-300 transition-all outline-none bg-white/80"
                                 />
                             </div>
 
@@ -208,7 +208,7 @@ export default function Dashboard() {
                                     value={searchParams.id}
                                     onChange={handleChange}
                                     placeholder="Enter MRN"
-                                    className="p-1.5 w-44 border border-gray-300 rounded"
+                                    className="p-2 w-44 border-2 border-blue-100 rounded-lg shadow-inner focus:shadow-md focus:border-blue-300 transition-all outline-none bg-white/80"
                                 />
                             </div>
 
@@ -218,7 +218,7 @@ export default function Dashboard() {
                                     name="modality"
                                     value={searchParams.modality}
                                     onChange={handleChange}
-                                    className="p-1.5 w-44 border border-gray-300 rounded"
+                                    className="p-2 w-44 border-2 border-blue-100 rounded-lg shadow-inner focus:shadow-md focus:border-blue-300 transition-all outline-none bg-white/80"
                                 >
                                     <option value="">All</option>
                                     <option value="CR">CR</option>
@@ -242,7 +242,7 @@ export default function Dashboard() {
                                     value={searchParams.study}
                                     onChange={handleChange}
                                     placeholder="Study Description"
-                                    className="p-1.5 w-44 border border-gray-300 rounded"
+                                    className="p-2 w-44 border-2 border-blue-100 rounded-lg shadow-inner focus:shadow-md focus:border-blue-300 transition-all outline-none bg-white/80"
                                 />
                             </div>
                         </div>
@@ -255,7 +255,7 @@ export default function Dashboard() {
                                     name="serviceStatus"
                                     value={searchParams.serviceStatus}
                                     onChange={handleChange}
-                                    className="p-1.5 w-44 border border-gray-300 rounded"
+                                    className="p-2 w-44 border-2 border-blue-100 rounded-lg shadow-inner focus:shadow-md focus:border-blue-300 transition-all outline-none bg-white/80"
                                 >
                                     <option value="">Select</option>
                                     <option value="New">New</option>
@@ -270,7 +270,7 @@ export default function Dashboard() {
                                     name="patientType"
                                     value={searchParams.patientType}
                                     onChange={handleChange}
-                                    className="p-1.5 w-44 border border-gray-300 rounded"
+                                    className="p-2 w-44 border-2 border-blue-100 rounded-lg shadow-inner focus:shadow-md focus:border-blue-300 transition-all outline-none bg-white/80"
                                 >
                                     <option value="">Select</option>
                                     <option value="OP">OP</option>
@@ -284,7 +284,7 @@ export default function Dashboard() {
                                     name="radiologist"
                                     value={searchParams.radiologist}
                                     onChange={handleChange}
-                                    className="p-1.5 w-44 border border-gray-300 rounded"
+                                    className="p-2 w-44 border-2 border-blue-100 rounded-lg shadow-inner focus:shadow-md focus:border-blue-300 transition-all outline-none bg-white/80"
                                 >
                                     <option value="">Select</option>
                                     <option value="Dr. Smith">Dr. Smith</option>
@@ -303,7 +303,7 @@ export default function Dashboard() {
                                     value={searchParams.accessionNo}
                                     onChange={handleChange}
                                     placeholder="Accession No"
-                                    className="p-1.5 w-44 border border-gray-300 rounded"
+                                    className="p-2 w-44 border-2 border-blue-100 rounded-lg shadow-inner focus:shadow-md focus:border-blue-300 transition-all outline-none bg-white/80"
                                 />
                             </div>
 
@@ -317,7 +317,7 @@ export default function Dashboard() {
                                     value={searchParams.fromDate}
                                     max={today}
                                     onChange={handleChange}
-                                    className="p-1.5 w-44 border border-gray-300 rounded"
+                                    className="p-2 w-44 border-2 border-blue-100 rounded-lg shadow-inner focus:shadow-md focus:border-blue-300 transition-all outline-none bg-white/80"
                                 />
                             </div>
 
@@ -332,7 +332,7 @@ export default function Dashboard() {
                                     min={searchParams.fromDate}
                                     max={today}
                                     onChange={handleChange}
-                                    className="p-1.5 w-44 border border-gray-300 rounded"
+                                    className="p-2 w-44 border-2 border-blue-100 rounded-lg shadow-inner focus:shadow-md focus:border-blue-300 transition-all outline-none bg-white/80"
                                 />
                             </div>
                         </div>
@@ -341,13 +341,13 @@ export default function Dashboard() {
                     <div className="flex justify-center gap-5 my-4">
                         <button
                             onClick={handleSearch}
-                            className="bg-brand-btn text-white px-6 py-2 rounded shadow hover:bg-brand-btn-hover transition-colors font-semibold"
+                            className="bg-brand-btn text-white px-8 py-2.5 rounded-lg shadow-[0_4px_0_#0f1f15] active:shadow-none active:translate-y-[4px] hover:bg-brand-btn-hover transition-all font-bold border-2 border-brand-btn/20 uppercase tracking-wide text-sm"
                         >
                             Search
                         </button>
                         <button
                             onClick={handleReset}
-                            className="bg-brand-btn text-white px-6 py-2 rounded shadow hover:bg-brand-btn-hover transition-colors font-semibold"
+                            className="bg-brand-btn text-white px-8 py-2.5 rounded-lg shadow-[0_4px_0_#0f1f15] active:shadow-none active:translate-y-[4px] hover:bg-brand-btn-hover transition-all font-bold border-2 border-brand-btn/20 uppercase tracking-wide text-sm"
                         >
                             Reset
                         </button>
@@ -357,11 +357,11 @@ export default function Dashboard() {
                         <p className="text-red-600 font-bold text-center animate-pulse mb-4">{error}</p>
                     )}
 
-                    <div className="overflow-x-auto border rounded shadow-sm">
+                    <div className="overflow-hidden rounded-xl shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)] border border-gray-200 bg-white">
                         <table className="w-full border-collapse bg-white">
                             <thead>
-                                <tr className="bg-brand-th text-white">
-                                    <th className="border p-2 text-left">Patient Name</th>
+                                <tr className="bg-gradient-to-r from-brand-th to-blue-400 text-white shadow-md">
+                                    <th className="p-3 text-left font-bold tracking-wide">Patient Name</th>
                                     <th className="border p-2 text-left">Patient ID</th>
                                     <th className="border p-2 text-left">Accession No</th>
                                     <th className="border p-2 text-center">Modality</th>

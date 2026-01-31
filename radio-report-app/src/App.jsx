@@ -21,9 +21,11 @@ function App() {
         {/* Default route redirects to login if not authenticated, else dashboard */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
+        {/* Protected Dashboard Route */}
         <Route
           path="/dashboard"
           element={
