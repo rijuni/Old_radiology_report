@@ -19,7 +19,7 @@ function App() {
     <Router>
       <Routes>
         {/* Default route redirects to login if not authenticated, else dashboard */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
