@@ -29,7 +29,7 @@ export default function Login() {
                         <img src="/image/kims_logo.png" alt="KIMS Logo" className="w-[200px] bg-white_90 p-3 rounded-xl bg-white/90 shadow-lg backdrop-blur-sm" />
                     </div>
                     <h1 className="text-5xl font-extrabold mb-6 leading-tight tracking-tight">
-                        Advanced Radiology <br /> <span className="text-teal-300">Reporting System</span>
+                        Old Radiology <br /> <span className="text-teal-300">Reporting System</span>
                     </h1>
                     <p className="text-lg text-teal-50 max-w-lg leading-relaxed opacity-90">
                         Secure, high-speed access to patient diagnostic reports.
