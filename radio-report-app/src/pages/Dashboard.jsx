@@ -82,14 +82,19 @@ export default function Dashboard() {
             const token = localStorage.getItem('token');
             const query = new URLSearchParams();
 
-            Object.entries(filters).forEach(([key, value]) => {
-                if (value) {
-                    // Backend expects specific field names
-                    if (key === 'serviceStatus') query.append('service_status', value);
-                    else if (key === 'patientType') query.append('patient_type', value);
-                    else query.append(key, value);
-                }
-            });
+            if (filters.id) {
+                // If ID is provided, prioritize it and ignore date constraints to find history.
+                query.append('id', filters.id);
+            } else {
+                // If no ID, apply all other filters including dates
+                Object.entries(filters).forEach(([key, value]) => {
+                    if (value && key !== 'id') { // Skip ID as it's empty
+                        if (key === 'serviceStatus') query.append('service_status', value);
+                        else if (key === 'patientType') query.append('patient_type', value);
+                        else query.append(key, value);
+                    }
+                });
+            }
 
             const response = await fetch(`http://127.0.0.1:8000/api/patients/?${query.toString()}`, {
                 headers: {
@@ -133,14 +138,15 @@ export default function Dashboard() {
     };
 
     const validateSearch = () => {
-        // Validation logic same as before if needed
-        const missing = [];
-        // if (!searchParams.id) missing.push("Patient ID"); // validation rules can be relaxed or kept
-        if (!searchParams.fromDate) missing.push("From Date");
-        if (!searchParams.toDate) missing.push("To Date");
+        // Rule: If Patient ID is present, we can search.
+        // If no ID, we MUST have both From Date and To Date.
 
-        if (missing.length > 0) {
-            setError("Please enter the mandatory field(s): " + missing.join(", "));
+        if (searchParams.id) {
+            return true;
+        }
+
+        if (!searchParams.fromDate || !searchParams.toDate) {
+            setError("Please provide either a Patient ID OR a valid Date Range.");
             return false;
         }
 
