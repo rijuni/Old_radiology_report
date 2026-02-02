@@ -33,8 +33,13 @@ export default function Login() {
             if (response.ok) {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('isAuthenticated', 'true');
-                localStorage.setItem('userName', data.username || 'Doctor');
-                localStorage.setItem('userId', data.user_id);
+                localStorage.setItem('userId', data.user_id); // PK
+                localStorage.setItem('employeeId', data.username); // User ID / Employee ID
+
+                const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Doctor';
+                localStorage.setItem('userFullName', fullName);
+                localStorage.setItem('userName', fullName); // Keeping legacy support if any component uses userName for display name
+
                 navigate('/dashboard');
             } else {
                 setError(data.non_field_errors ? data.non_field_errors[0] : 'Invalid credentials');
