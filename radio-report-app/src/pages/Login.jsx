@@ -5,14 +5,46 @@ import { User, Lock, ArrowRight } from 'lucide-react';
 export default function Login() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({ username: '', password: '' });
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = (e) => {
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+        setError('');
+    };
+
+    const handleLogin = async (e) => {
         e.preventDefault();
-        // Simulate login
-        localStorage.setItem('isAuthenticated', 'true');
-        // Save a mock user name for display
-        localStorage.setItem('userName', 'Dr. User');
-        navigate('/dashboard');
+        setLoading(true);
+        setError('');
+
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api-token-auth/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('isAuthenticated', 'true');
+                localStorage.setItem('userName', data.username || 'Doctor');
+                localStorage.setItem('userId', data.user_id);
+                navigate('/dashboard');
+            } else {
+                setError(data.non_field_errors ? data.non_field_errors[0] : 'Invalid credentials');
+            }
+        } catch (err) {
+            setError('Failed to connect to server. Please try again.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -29,7 +61,7 @@ export default function Login() {
                         <img src="/image/kims_logo.png" alt="KIMS Logo" className="w-[200px] bg-white_90 p-3 rounded-xl bg-white/90 shadow-lg backdrop-blur-sm" />
                     </div>
                     <h1 className="text-5xl font-extrabold mb-6 leading-tight tracking-tight">
-                        Advanced Radiology <br /> <span className="text-teal-300">Reporting System</span>
+                        Old Radiology <br /> <span className="text-teal-300">Reporting System</span>
                     </h1>
                     <p className="text-lg text-teal-50 max-w-lg leading-relaxed opacity-90">
                         Secure, high-speed access to patient diagnostic reports.
@@ -51,6 +83,12 @@ export default function Login() {
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-6">
+                        {error && (
+                            <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium text-center animate-pulse">
+                                {error}
+                            </div>
+                        )}
+
                         <div className="group">
                             <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Username / ID</label>
                             <div className="relative">
@@ -59,8 +97,11 @@ export default function Login() {
                                 </div>
                                 <input
                                     type="text"
+                                    name="username"
+                                    value={formData.username}
+                                    onChange={handleChange}
                                     className="w-full pl-12 pr-4 py-4 rounded-xl bg-white border-2 border-gray-100 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all duration-200 font-medium shadow-sm"
-                                    placeholder="Enter your ID"
+                                    placeholder="Enter your Username"
                                     required
                                 />
                             </div>
@@ -74,6 +115,9 @@ export default function Login() {
                                 </div>
                                 <input
                                     type="password"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
                                     className="w-full pl-12 pr-4 py-4 rounded-xl bg-white border-2 border-gray-100 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all duration-200 font-medium shadow-sm"
                                     placeholder="••••••••"
                                     required
@@ -83,10 +127,17 @@ export default function Login() {
 
                         <button
                             type="submit"
-                            className="w-full py-4 bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold rounded-xl shadow-lg hover:shadow-teal-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 group"
+                            disabled={loading}
+                            className={`w-full py-4 bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold rounded-xl shadow-lg hover:shadow-teal-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 group ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                            <span>Sign In</span>
-                            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                            {loading ? (
+                                <span>Signing In...</span>
+                            ) : (
+                                <>
+                                    <span>Sign In</span>
+                                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                                </>
+                            )}
                         </button>
                     </form>
 

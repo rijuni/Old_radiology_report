@@ -4,21 +4,29 @@ import Footer from '../components/Footer';
 import { useNavigate } from 'react-router-dom';
 import { Menu, LogOut, User as UserIcon, X } from 'lucide-react';
 
-const MOCK_PATIENTS = [
-    { name: 'Ramesh Kumar', id: 'MRN123', accession: 'ACC001', modality: 'CT', date: '2024-01-12', status: 'Final', type: 'OP', radiologist: 'Dr. Smith' },
-    { name: 'Sita Devi', id: 'MRN124', accession: 'ACC002', modality: 'US', date: '2024-01-13', status: 'Draft', type: 'IP', radiologist: 'Dr. Doe' },
-    { name: 'John Doe', id: 'MRN125', accession: 'ACC003', modality: 'MRI', date: '2024-01-14', status: 'New', type: 'OP', radiologist: 'Dr. Smith' },
-];
+
 
 export default function Dashboard() {
     const navigate = useNavigate();
     const userName = localStorage.getItem('userName') || 'Doctor';
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef(null);
+    const [patients, setPatients] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    // Auth check
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/login');
+        }
+    }, [navigate]);
 
     const handleLogout = () => {
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('userName');
+        localStorage.removeItem('token');
+        localStorage.removeItem('userId');
         navigate('/login');
     };
 
@@ -37,7 +45,7 @@ export default function Dashboard() {
 
     const [searchParams, setSearchParams] = useState({
         name: '',
-        id: '',
+        id: '', // MRN
         modality: '',
         study: '', // Added Study
         serviceStatus: '',
@@ -48,7 +56,6 @@ export default function Dashboard() {
         toDate: '',
     });
 
-    const [filteredPatients, setFilteredPatients] = useState(MOCK_PATIENTS);
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -58,7 +65,55 @@ export default function Dashboard() {
             fromDate: today,
             toDate: today
         }));
+        // Fetch initial data? No, usually empty or all defaults. 
+        // Let's fetch with today's date defaults if that's the requirement, 
+        // or just fetch all (limited by backend pagination)
+        // Let's trigger a search with defaults on load
+        fetchPatients({
+            fromDate: today,
+            toDate: today
+        });
     }, []);
+
+    const fetchPatients = async (filters) => {
+        setLoading(true);
+        setError('');
+        try {
+            const token = localStorage.getItem('token');
+            const query = new URLSearchParams();
+
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value) {
+                    // Backend expects specific field names
+                    if (key === 'serviceStatus') query.append('service_status', value);
+                    else if (key === 'patientType') query.append('patient_type', value);
+                    else query.append(key, value);
+                }
+            });
+
+            const response = await fetch(`http://127.0.0.1:8000/api/patients/?${query.toString()}`, {
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.status === 401) {
+                handleLogout();
+                return;
+            }
+
+            if (!response.ok) throw new Error('Failed to fetch data');
+
+            const data = await response.json();
+            setPatients(data);
+        } catch (err) {
+            console.error(err);
+            setError('Error fetching patients. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -78,8 +133,9 @@ export default function Dashboard() {
     };
 
     const validateSearch = () => {
+        // Validation logic same as before if needed
         const missing = [];
-        if (!searchParams.id) missing.push("Patient ID");
+        // if (!searchParams.id) missing.push("Patient ID"); // validation rules can be relaxed or kept
         if (!searchParams.fromDate) missing.push("From Date");
         if (!searchParams.toDate) missing.push("To Date");
 
@@ -100,45 +156,25 @@ export default function Dashboard() {
 
     const handleSearch = () => {
         if (!validateSearch()) return;
-
-        const results = MOCK_PATIENTS.filter(p => {
-            if (searchParams.name && !p.name.toLowerCase().includes(searchParams.name.toLowerCase())) return false;
-            if (searchParams.id && !p.id.toLowerCase().includes(searchParams.id.toLowerCase())) return false;
-            if (searchParams.modality && p.modality !== searchParams.modality) return false;
-            if (searchParams.serviceStatus && p.status !== searchParams.serviceStatus) return false;
-            if (searchParams.patientType && p.type !== searchParams.patientType) return false;
-            if (searchParams.accessionNo && !p.accession.toLowerCase().includes(searchParams.accessionNo.toLowerCase())) return false;
-            // Added simple Study filter (mock logic since no study field exists in mock data yet)
-            // Ideally we check p.study vs searchParams.study
-            // For now, if study is entered, we just don't filter it hard unless mock data has it.
-
-            const pDate = new Date(p.date);
-            const fromD = new Date(searchParams.fromDate);
-            const toD = new Date(searchParams.toDate);
-
-            if (pDate < fromD || pDate > toD) return false;
-
-            return true;
-        });
-
-        setFilteredPatients(results);
+        fetchPatients(searchParams);
     };
 
     const handleReset = () => {
         const today = new Date().toISOString().split('T')[0];
-        setSearchParams({
+        const defaults = {
             name: '',
             id: '',
             modality: '',
-            study: '', // Added Study
+            study: '',
             serviceStatus: '',
             patientType: '',
             radiologist: '',
             accessionNo: '',
             fromDate: today,
             toDate: today,
-        });
-        setFilteredPatients(MOCK_PATIENTS);
+        };
+        setSearchParams(defaults);
+        fetchPatients(defaults);
         setError('');
     };
 
@@ -370,20 +406,26 @@ export default function Dashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredPatients.length > 0 ? (
-                                    filteredPatients.map((row, idx) => (
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan="6" className="p-8 text-center text-gray-500 font-medium animate-pulse">
+                                            Loading patient records...
+                                        </td>
+                                    </tr>
+                                ) : patients.length > 0 ? (
+                                    patients.map((row, idx) => (
                                         <tr key={idx} className="hover:bg-gray-50">
                                             <td className="border p-2">{row.name}</td>
-                                            <td className="border p-2">{row.id}</td>
-                                            <td className="border p-2">{row.accession}</td>
+                                            <td className="border p-2">{row.mrn}</td>
+                                            <td className="border p-2">{row.accession_no}</td>
                                             <td className="border p-2 text-center">{row.modality}</td>
-                                            <td className="border p-2 text-center">{row.date}</td>
+                                            <td className="border p-2 text-center">{row.exam_date}</td>
                                             <td className="border p-2 text-center">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${row.status === 'Final' ? 'bg-green-100 text-green-700' :
-                                                    row.status === 'Draft' ? 'bg-yellow-100 text-yellow-700' :
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${row.service_status === 'Final' ? 'bg-green-100 text-green-700' :
+                                                    row.service_status === 'Draft' ? 'bg-yellow-100 text-yellow-700' :
                                                         'bg-blue-100 text-blue-700'
                                                     }`}>
-                                                    {row.status}
+                                                    {row.service_status}
                                                 </span>
                                             </td>
                                         </tr>

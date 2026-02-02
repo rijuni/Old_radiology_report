@@ -4,13 +4,69 @@ import { User, Mail, Lock, CheckCircle } from 'lucide-react';
 
 export default function Signup() {
     const navigate = useNavigate();
+    const [formData, setFormData] = useState({
+        username: '',
+        password: '',
+        confirmPassword: '',
+        first_name: '',
+    });
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleSignup = (e) => {
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        // Enforce numeric only for User ID (username)
+        if (name === 'username' && !/^\d*$/.test(value)) {
+            return;
+        }
+        setFormData(prev => ({ ...prev, [name]: value }));
+        setError('');
+    };
+
+    const handleSignup = async (e) => {
         e.preventDefault();
-        // Simulate signup and auto-login
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('userName', 'New Doctor');
-        navigate('/dashboard');
+        setLoading(true);
+        setError('');
+
+        if (formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // Using first_name to store full name for simplicity as backend expects first_name/last_name
+            const payload = {
+                username: formData.username,
+                password: formData.password,
+                first_name: formData.first_name,
+            };
+
+            const response = await fetch('http://127.0.0.1:8000/api/auth/register/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Success
+                navigate('/login');
+            } else {
+                // Error handling
+                if (data.username) setError(`User ID: ${data.username[0]}`);
+                else if (data.password) setError(`Password: ${data.password[0]}`);
+                else setError('Registration failed. Please check your inputs.');
+            }
+        } catch (err) {
+            setError('Failed to connect to server.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -49,6 +105,11 @@ export default function Signup() {
                     </div>
 
                     <form onSubmit={handleSignup} className="space-y-4">
+                        {error && (
+                            <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium text-center animate-pulse">
+                                {error}
+                            </div>
+                        )}
                         <div className="group">
                             <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Full Name</label>
                             <div className="relative">
@@ -57,6 +118,9 @@ export default function Signup() {
                                 </div>
                                 <input
                                     type="text"
+                                    name="first_name"
+                                    value={formData.first_name}
+                                    onChange={handleChange}
                                     className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white border-2 border-gray-100 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all duration-200 font-medium shadow-sm"
                                     placeholder="Dr. John Doe"
                                     required
@@ -65,19 +129,24 @@ export default function Signup() {
                         </div>
 
                         <div className="group">
-                            <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Email / ID</label>
+                            <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">User ID</label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-teal-600 transition-colors">
-                                    <Mail size={19} />
+                                    <User size={20} />
                                 </div>
                                 <input
-                                    type="email"
+                                    type="text"
+                                    name="username"
+                                    value={formData.username}
+                                    onChange={handleChange}
                                     className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white border-2 border-gray-100 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all duration-200 font-medium shadow-sm"
-                                    placeholder="user@kims.com"
+                                    placeholder="Enter User ID"
                                     required
                                 />
                             </div>
                         </div>
+
+
 
                         <div className="group">
                             <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Password</label>
@@ -87,6 +156,9 @@ export default function Signup() {
                                 </div>
                                 <input
                                     type="password"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
                                     className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white border-2 border-gray-100 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all duration-200 font-medium shadow-sm"
                                     placeholder="••••••••"
                                     required
@@ -102,6 +174,9 @@ export default function Signup() {
                                 </div>
                                 <input
                                     type="password"
+                                    name="confirmPassword"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
                                     className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white border-2 border-gray-100 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all duration-200 font-medium shadow-sm"
                                     placeholder="••••••••"
                                     required
@@ -111,9 +186,10 @@ export default function Signup() {
 
                         <button
                             type="submit"
-                            className="w-full py-4 bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold rounded-xl shadow-lg hover:shadow-teal-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 mt-4"
+                            disabled={loading}
+                            className={`w-full py-4 bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold rounded-xl shadow-lg hover:shadow-teal-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 mt-4 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                            Create Account
+                            {loading ? 'Creating Account...' : 'Create Account'}
                         </button>
                     </form>
 
