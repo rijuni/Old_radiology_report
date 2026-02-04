@@ -12,11 +12,11 @@ export default function Header() {
 
     return (
         <header>
-            <div className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-brand-header to-teal-100 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)] relative z-50 border-b border-teal-200/50">
+            <div className="flex justify-between items-center px-6 py-2 bg-white/90 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.1)] relative z-50 border-b border-white/20">
                 {/* Left Side: KIMS Logo */}
                 <div className="flex items-center">
                     <Link to="/dashboard" className="transform hover:scale-105 transition-transform duration-200 drop-shadow-md">
-                        <img src="/image/kims_logo.png" alt="KIMS Logo" className="w-[180px]" />
+                        <img src="/image/kims_logo.png" alt="KIMS Logo" className="w-[140px]" />
                     </Link>
                 </div>
 
@@ -24,13 +24,13 @@ export default function Header() {
                 <div className="flex items-center gap-4">
                     {/* User Details */}
                     {/* User Details */}
-                    <div className="flex flex-col items-end mr-3">
-                        <span className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-0.5">Welcome</span>
-                        <span className="text-teal-900 font-extrabold text-lg tracking-tight leading-none drop-shadow-sm">{user.name}</span>
+                    <div className="flex flex-col items-end mr-3 transform hover:scale-105 transition-transform duration-200 drop-shadow-md cursor-default">
+                        <span className="text-gray-500 text-[10px] font-medium uppercase tracking-wider mb-0">Welcome</span>
+                        <span className="text-teal-900 font-extrabold text-base tracking-tight leading-none">{user.name}</span>
                     </div>
 
                     {/* Radiology Logo */}
-                    <img src="/image/radiology_logo.png" alt="Radiology" className="w-[100px] h-auto object-contain hidden md:block opacity-90 drop-shadow-sm" />
+                    <img src="/image/radiology_logo.png" alt="Radiology" className="w-[80px] h-auto object-contain hidden md:block opacity-90 drop-shadow-sm transform hover:scale-105 transition-transform duration-200" />
                 </div>
             </div>
 
