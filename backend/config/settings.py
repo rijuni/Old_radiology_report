@@ -82,7 +82,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'radiology_db',
         'USER': 'root',
-        'PASSWORD': 'Manisha@20',
+        'PASSWORD': 'ZNMDR@Rijuni15',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
