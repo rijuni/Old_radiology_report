@@ -80,7 +80,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'radiology_db',
+        'NAME': 'old_lab_report',
         'USER': 'root',
         'PASSWORD': 'ZNMDR@Rijuni15',
         'HOST': 'localhost',

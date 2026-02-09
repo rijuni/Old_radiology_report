@@ -3,16 +3,23 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.pagination import PageNumberPagination
 from .models import User, Patient
 from .serializers import UserSerializer, PatientSerializer, RegisterSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from datetime import datetime
 
+class PatientPagination(PageNumberPagination):
+    page_size = 100
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
+
 class PatientViewSet(viewsets.ModelViewSet):
-    queryset = Patient.objects.all()
+    queryset = Patient.objects.all().order_by('-exam_date')
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = PatientPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = {
         'modality': ['exact'],

@@ -13,6 +13,9 @@ export default function Dashboard() {
     const menuRef = useRef(null);
     const [patients, setPatients] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
 
     // Auth check
     useEffect(() => {
@@ -59,28 +62,17 @@ export default function Dashboard() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const today = new Date().toISOString().split('T')[0];
-        setSearchParams(prev => ({
-            ...prev,
-            fromDate: today,
-            toDate: today
-        }));
-        // Fetch initial data? No, usually empty or all defaults. 
-        // Let's fetch with today's date defaults if that's the requirement, 
-        // or just fetch all (limited by backend pagination)
-        // Let's trigger a search with defaults on load
-        fetchPatients({
-            fromDate: today,
-            toDate: today
-        });
+        // on Load: fetch first page of patients
+        fetchPatients({}, 1);
     }, []);
 
-    const fetchPatients = async (filters) => {
+    const fetchPatients = async (filters, page = 1) => {
         setLoading(true);
         setError('');
         try {
             const token = localStorage.getItem('token');
             const query = new URLSearchParams();
+            query.append('page', page);
 
             if (filters.id) {
                 // If ID is provided, prioritize it and ignore date constraints to find history.
@@ -111,7 +103,10 @@ export default function Dashboard() {
             if (!response.ok) throw new Error('Failed to fetch data');
 
             const data = await response.json();
-            setPatients(data);
+            setPatients(data.results || []);
+            setTotalCount(data.count || 0);
+            setTotalPages(Math.ceil((data.count || 0) / 100));
+            setCurrentPage(page);
         } catch (err) {
             console.error(err);
             setError('Error fetching patients. Please try again.');
@@ -162,7 +157,7 @@ export default function Dashboard() {
 
     const handleSearch = () => {
         if (!validateSearch()) return;
-        fetchPatients(searchParams);
+        fetchPatients(searchParams, 1);
     };
 
     const handleReset = () => {
@@ -180,7 +175,7 @@ export default function Dashboard() {
             toDate: today,
         };
         setSearchParams(defaults);
-        fetchPatients(defaults);
+        fetchPatients(defaults, 1);
         setError('');
     };
 
@@ -443,6 +438,31 @@ export default function Dashboard() {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="flex justify-between items-center mt-6 px-4">
+                            <div className="text-sm text-gray-600">
+                                Showing page {currentPage} of {totalPages} ({totalCount.toLocaleString()} total records)
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => fetchPatients(searchParams, currentPage - 1)}
+                                    disabled={currentPage === 1}
+                                    className="px-4 py-2 bg-teal-600 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-teal-700 transition-colors"
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    onClick={() => fetchPatients(searchParams, currentPage + 1)}
+                                    disabled={currentPage === totalPages}
+                                    className="px-4 py-2 bg-teal-600 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-teal-700 transition-colors"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                 </section>
             </main>
