@@ -81,8 +81,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'old_lab_report',
-        'USER': 'root',
-        'PASSWORD': 'ZNMDR@Rijuni15',
+        'USER': 'report',
+        'PASSWORD': 'Kims@123',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
