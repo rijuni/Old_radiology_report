@@ -219,7 +219,7 @@ export default function Dashboard() {
                 <section className="bg-white/80 backdrop-blur-md p-8 w-full rounded-3xl mb-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] relative border border-white/60">
 
                     {/* Search Box with 3D inset look */}
-                    <div className="bg-gradient-to-b from-slate-50 to-slate-100 p-6 rounded-2xl mb-8 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] border border-slate-200/60">
+                    <div className="bg-gradient-to-b from-slate-50 to-slate-100 p-2 rounded-2xl mb-8 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] border border-slate-200/60">
                         {/* Row 1 */}
                         <div className="flex flex-wrap gap-4 mb-4">
                             <div className="flex items-center gap-2">
@@ -374,10 +374,10 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    <div className="flex justify-center gap-5 my-4">
+                    <div className="flex justify-center gap-8 my-3">
                         <button
                             onClick={handleSearch}
-                            className="bg-gradient-to-r from-teal-600 to-teal-500 text-white px-10 py-3 rounded-xl shadow-[0_8px_20px_-6px_rgba(13,148,136,0.4)] hover:shadow-[0_12px_25px_-8px_rgba(13,148,136,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all duration-200 font-bold tracking-wide text-sm border-t border-white/20"
+                            className="bg-gradient-to-r from-teal-600 to-teal-500 text-white px-10 py-3 rounded-xl shadow-[0_8px_10px_-6px_rgba(13,148,136,0.4)] hover:shadow-[0_12px_25px_-8px_rgba(13,148,136,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all duration-200 font-bold tracking-wide text-sm border-t border-white/20"
                         >
                             Search
                         </button>
@@ -397,9 +397,10 @@ export default function Dashboard() {
                         <table className="w-full border-collapse bg-white">
                             <thead>
                                 <tr className="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white shadow-md">
-                                    <th className="p-3 text-left font-bold tracking-wide">Patient Name</th>
+                                    <th className="border p-2 text-left">Sl No</th>
                                     <th className="border p-2 text-left">Patient ID</th>
-                                    <th className="border p-2 text-left">Accession No</th>
+                                    <th className="p-3 text-left font-bold tracking-wide">Patient Name</th>
+                                    <th className="border p-2 text-left">Study Description</th>
                                     <th className="border p-2 text-center">Modality</th>
                                     <th className="border p-2 text-center">Date</th>
                                     <th className="border p-2 text-center">Status</th>
@@ -408,16 +409,17 @@ export default function Dashboard() {
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan="6" className="p-8 text-center text-gray-500 font-medium animate-pulse">
+                                        <td colSpan="7" className="p-8 text-center text-gray-500 font-medium animate-pulse">
                                             Loading patient records...
                                         </td>
                                     </tr>
                                 ) : patients.length > 0 ? (
                                     patients.map((row, idx) => (
                                         <tr key={idx} className="hover:bg-gray-50">
-                                            <td className="border p-2">{row.name}</td>
+                                            <td className="border p-2">{(currentPage - 1) * 100 + idx + 1}</td>
                                             <td className="border p-2">{row.mrn}</td>
-                                            <td className="border p-2">{row.accession_no}</td>
+                                            <td className="border p-2">{row.name}</td>
+                                            <td className="border p-2">{row.study_description}</td>
                                             <td className="border p-2 text-center">{row.modality}</td>
                                             <td className="border p-2 text-center">{row.exam_date}</td>
                                             <td className="border p-2 text-center">
@@ -432,7 +434,7 @@ export default function Dashboard() {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="6" className="p-4 text-center text-gray-500">No records found.</td>
+                                        <td colSpan="7" className="p-4 text-center text-gray-500">No records found.</td>
                                     </tr>
                                 )}
                             </tbody>
