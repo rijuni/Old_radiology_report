@@ -12,7 +12,7 @@ export default function Header() {
 
     return (
         <header>
-            <div className="flex justify-between items-center px-6 py-2 bg-white/90 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.1)] relative z-50 border-b border-white/20">
+            <div className="flex justify-between items-center px-6 py-2 bg-green-200/90 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.1)] relative z-50 border-b border-white/20">
                 {/* Left Side: KIMS Logo */}
                 <div className="flex items-center">
                     <Link to="/dashboard" className="transform hover:scale-105 transition-transform duration-200 drop-shadow-md">
