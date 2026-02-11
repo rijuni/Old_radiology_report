@@ -404,6 +404,7 @@ export default function Dashboard() {
                                     <th className="border p-2 text-center">Modality</th>
                                     <th className="border p-2 text-center">Date</th>
                                     <th className="border p-2 text-center">Status</th>
+                                    <th className="border p-2 text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -430,6 +431,7 @@ export default function Dashboard() {
                                                     {row.service_status}
                                                 </span>
                                             </td>
+                                            <td></td>
                                         </tr>
                                     ))
                                 ) : (
