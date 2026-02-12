@@ -1,16 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useNavigate } from 'react-router-dom';
-import { Menu, LogOut, User as UserIcon, X } from 'lucide-react';
 
 
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const userName = localStorage.getItem('userName') || 'Doctor';
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const menuRef = useRef(null);
     const [patients, setPatients] = useState([]);
     const [loading, setLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
@@ -24,27 +20,6 @@ export default function Dashboard() {
             navigate('/login');
         }
     }, [navigate]);
-
-    const handleLogout = () => {
-        localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('userName');
-        localStorage.removeItem('token');
-        localStorage.removeItem('userId');
-        navigate('/login');
-    };
-
-    // Close menu when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
-                setIsMenuOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
 
     const [searchParams, setSearchParams] = useState({
         name: '',
@@ -186,37 +161,7 @@ export default function Dashboard() {
             <Header />
 
             <main className="flex-1 pb-20 px-4">
-                {/* Navigation Bar */}
-                <div className="py-2 flex flex-col items-start relative z-40" ref={menuRef}>
-                    <button
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className="p-1 rounded-md bg-white border border-teal-200 hover:bg-teal-50 text-teal-700 shadow-sm active:shadow-none active:translate-y-[1px] transition-all duration-150 ease-out flex items-center justify-center"
-                        title="Menu"
-                    >
-                        {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
-                    </button>
-
-                    {/* Dropdown Menu - Pushes content down */}
-                    {isMenuOpen && (
-                        <div className="mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 mb-4">
-                            <div className="p-3 bg-teal-50 border-b border-teal-100">
-                                <div className="flex items-center gap-2 text-teal-800 font-bold mb-1">
-                                    <UserIcon size={16} />
-                                    <span>{userName}</span>
-                                </div>
-                                <p className="text-xs text-teal-600">Logged In</p>
-                            </div>
-                            <button
-                                onClick={handleLogout}
-                                className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors text-sm font-medium"
-                            >
-                                <LogOut size={16} />
-                                Logout
-                            </button>
-                        </div>
-                    )}
-                </div>
-                <section className="bg-white/80 backdrop-blur-md p-8 w-full rounded-3xl mb-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] relative border border-white/60">
+                <section className="bg-white/80 backdrop-blur-md p-8 w-full rounded-3xl mb-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] relative border border-white/60 mt-6">
 
                     {/* Search Box with 3D inset look */}
                     <div className="bg-gradient-to-b from-slate-50 to-slate-100 p-2 rounded-2xl mb-8 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] border border-slate-200/60">
