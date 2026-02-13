@@ -14,6 +14,7 @@ class Patient(models.Model):
     service_status = models.CharField(max_length=20) # New, Draft, Final
     patient_type = models.CharField(max_length=10) # OP, IP
     radiologist = models.CharField(max_length=255)
+    report_path = models.CharField(max_length=500, blank=True, null=True)
     exam_date = models.DateField()
 
     def __str__(self):
