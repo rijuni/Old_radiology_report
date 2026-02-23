@@ -264,16 +264,15 @@ export default function Dashboard() {
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <label className="font-bold whitespace-nowrap">Radiologist :</label>
+                                <label className="font-bold whitespace-nowrap text-gray-400">Radiologist :</label>
                                 <select
                                     name="radiologist"
                                     value={searchParams.radiologist}
                                     onChange={handleChange}
-                                    className="p-2.5 w-44 border border-slate-200 rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.03)] focus:shadow-[0_0_0_4px_rgba(13,148,136,0.1)] focus:border-teal-500 transition-all outline-none bg-white font-medium text-slate-700"
+                                    disabled
+                                    className="p-2.5 w-44 border border-slate-200 rounded-xl bg-gray-100 font-medium text-gray-400 cursor-not-allowed outline-none"
                                 >
-                                    <option value="">Select</option>
-                                    <option value="Dr. Smith">Dr. Smith</option>
-                                    <option value="Dr. Doe">Dr. Doe</option>
+                                    <option value="">Select (Unavailable)</option>
                                 </select>
                             </div>
                         </div>
