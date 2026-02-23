@@ -56,7 +56,11 @@ export default function Dashboard() {
                 // If no ID, apply all other filters including dates
                 Object.entries(filters).forEach(([key, value]) => {
                     if (value && key !== 'id') { // Skip ID as it's empty
-                        if (key === 'serviceStatus') query.append('service_status', value);
+                        if (key === 'serviceStatus') {
+                            // Map labels to numeric codes for backend if necessary
+                            const statusMap = { 'New': '0', 'Draft': '1', 'Final': '2' };
+                            query.append('service_status', statusMap[value] || value);
+                        }
                         else if (key === 'patientType') query.append('patient_type', value);
                         else query.append(key, value);
                     }
@@ -369,11 +373,14 @@ export default function Dashboard() {
                                             <td className="border p-2 text-center">{row.modality}</td>
                                             <td className="border p-2 text-center">{row.exam_date}</td>
                                             <td className="border p-2 text-center">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${row.service_status === 'Final' ? 'bg-green-100 text-green-700' :
-                                                    row.service_status === 'Draft' ? 'bg-yellow-100 text-yellow-700' :
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${row.service_status === 'Final' || row.service_status === '2' ? 'bg-green-100 text-green-700' :
+                                                    row.service_status === 'Draft' || row.service_status === '1' ? 'bg-yellow-100 text-yellow-700' :
                                                         'bg-blue-100 text-blue-700'
                                                     }`}>
-                                                    {row.service_status}
+                                                    {row.service_status === '0' ? 'New' :
+                                                        row.service_status === '1' ? 'Draft' :
+                                                            row.service_status === '2' ? 'Final' :
+                                                                row.service_status}
                                                 </span>
                                             </td>
                                             <td className="border p-2 text-center">
