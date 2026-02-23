@@ -9,6 +9,11 @@ from .serializers import UserSerializer, PatientSerializer, RegisterSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from datetime import datetime
+import os
+import sys
+import subprocess
+from django.http import FileResponse, Http404
+from django.conf import settings
 
 class PatientPagination(PageNumberPagination):
     page_size = 100
@@ -26,6 +31,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         'service_status': ['exact'],
         'patient_type': ['exact'],
         'radiologist': ['exact'],
+        'report_path': ['exact']
     }
     search_fields = ['name', 'mrn', 'accession_no']
 
@@ -99,10 +105,93 @@ class SeedDataView(APIView):
             },
         ]
         
-        count = 0
-        for p_data in mock_patients:
-            if not Patient.objects.filter(mrn=p_data['mrn']).exists():
-                Patient.objects.create(**p_data)
-                count += 1
+        existing_mrns = Patient.objects.values_list('mrn', flat=True)
+        created_count = 0
         
-        return Response({"message": f"{count} Mock patients added"}, status=status.HTTP_201_CREATED)
+        for data in mock_patients:
+            if data['mrn'] not in existing_mrns:
+                Patient.objects.create(**data)
+                created_count += 1
+                
+        return Response({"message": f"Seeded {created_count} patients", "total": Patient.objects.count()})
+
+class ServeReportView(APIView):
+    permission_classes = [permissions.AllowAny] # Using AllowAny to simplify access for file serving
+
+    def get(self, request, path):
+        # Construct full path
+        media_root = settings.MEDIA_ROOT
+        file_path = os.path.join(media_root, path)
+        
+        if not os.path.exists(file_path):
+            raise Http404("Report not found")
+            
+        # If it's already a PDF, serve it inline (to open in browser)
+        if file_path.lower().endswith('.pdf'):
+            return FileResponse(open(file_path, 'rb'), content_type='application/pdf')
+            
+        # If it's a DOC/DOCX, try to find or create a PDF version
+        if file_path.lower().endswith(('.doc', '.docx')):
+            pdf_path = os.path.splitext(file_path)[0] + ".pdf"
+            
+            # Check for existing up-to-date PDF
+            needs_conversion = True
+            if os.path.exists(pdf_path):
+                source_mtime = os.path.getmtime(file_path)
+                pdf_mtime = os.path.getmtime(pdf_path)
+                if pdf_mtime > source_mtime:
+                    needs_conversion = False
+            
+            if needs_conversion:
+                try:
+                    # Lookup patient info for replacement
+                    exam_date_str = ""
+                    radiologist_name = ""
+                    
+                    # Normalize path for DB lookup (always use forward slashes in DB)
+                    norm_path = path.replace('\\', '/')
+                    patient = Patient.objects.filter(report_path=norm_path).first()
+                    
+                    if patient:
+                        if patient.exam_date:
+                            exam_date_str = patient.exam_date.strftime("%d-%m-%Y")
+                        if patient.radiologist:
+                            radiologist_name = patient.radiologist
+                    
+                    # Use PowerShell instead of Python COM to bypass common threading issues
+                    script_path = os.path.join(settings.BASE_DIR, 'convert.ps1')
+                    
+                    print(f"Converting using PowerShell: {file_path}")
+                    print(f"Replacing placeholders with: Date={exam_date_str}, Signed={radiologist_name}")
+                    
+                    # Construct command with arguments for replacement
+                    cmd = [
+                        "powershell", 
+                        "-NoProfile", 
+                        "-ExecutionPolicy", "Bypass", 
+                        "-File", script_path, 
+                        file_path, 
+                        pdf_path,
+                        exam_date_str, 
+                        radiologist_name
+                    ]
+                    
+                    result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+                    
+                    # Log success for debugging
+                    print(f"PowerShell Output: {result.stdout}")
+                    
+                except subprocess.CalledProcessError as e:
+                    print(f"PS Conversion Error: {e.stderr}")
+                    # Only fallback if absolutely necessary
+                    return FileResponse(open(file_path, 'rb'), as_attachment=True)
+                except Exception as e:
+                    print(f"Unexpected Error: {e}")
+                    return FileResponse(open(file_path, 'rb'), as_attachment=True)
+            
+            # Serve the PDF
+            if os.path.exists(pdf_path):
+                return FileResponse(open(pdf_path, 'rb'), content_type='application/pdf')
+        
+        # Default fallback
+        return FileResponse(open(file_path, 'rb'), as_attachment=True)
