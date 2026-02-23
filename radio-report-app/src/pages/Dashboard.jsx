@@ -63,7 +63,7 @@ export default function Dashboard() {
                 });
             }
 
-            const response = await fetch(`http://${window.location.hostname}:8000/api/patients/?${query.toString()}`, {
+            const response = await fetch(`http://127.0.0.1:8000/api/patients/?${query.toString()}`, {
                 headers: {
                     'Authorization': `Token ${token}`,
                     'Content-Type': 'application/json'
@@ -322,13 +322,13 @@ export default function Dashboard() {
                     <div className="flex justify-center gap-8 my-3">
                         <button
                             onClick={handleSearch}
-                            className="bg-gradient-to-r from-teal-600 to-teal-500 text-white px-10 py-3 rounded-xl shadow-[0_8px_10px_-6px_rgba(13,148,136,0.4)] hover:from-teal-800 hover:to-teal-900 hover:shadow-[0_12px_25px_-8px_rgba(13,148,136,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all duration-200 font-bold tracking-wide text-sm border-t border-white/20"
+                            className="bg-gradient-to-r from-teal-600 to-teal-500 text-white px-10 py-3 rounded-xl shadow-[0_8px_10px_-6px_rgba(13,148,136,0.4)] hover:shadow-[0_12px_25px_-8px_rgba(13,148,136,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all duration-200 font-bold tracking-wide text-sm border-t border-white/20"
                         >
                             Search
                         </button>
                         <button
                             onClick={handleReset}
-                            className="bg-white text-slate-600 px-10 py-3 rounded-xl shadow-[0_4px_15px_-3px_rgba(0,0,0,0.07)] hover:bg-red-50 hover:text-red-600 hover:border-red-200 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 font-bold tracking-wide text-sm border border-slate-200"
+                            className="bg-white text-slate-600 px-10 py-3 rounded-xl shadow-[0_4px_15px_-3px_rgba(0,0,0,0.07)] hover:bg-slate-50 hover:text-slate-800 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 font-bold tracking-wide text-sm border border-slate-200"
                         >
                             Reset
                         </button>
@@ -355,7 +355,7 @@ export default function Dashboard() {
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan="8" className="p-8 text-center text-gray-500 font-medium animate-pulse">
+                                        <td colSpan="7" className="p-8 text-center text-gray-500 font-medium animate-pulse">
                                             Loading patient records...
                                         </td>
                                     </tr>
@@ -376,28 +376,12 @@ export default function Dashboard() {
                                                     {row.service_status}
                                                 </span>
                                             </td>
-                                            <td className="border p-2 text-center">
-                                                {row.report_url ? (
-                                                    <a
-                                                        href={row.report_url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 text-xs font-medium"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
-                                                        View Report
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-gray-400 text-xs italic">No Report</span>
-                                                )}
-                                            </td>
+                                            <td></td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="8" className="p-4 text-center text-gray-500">No records found.</td>
+                                        <td colSpan="7" className="p-4 text-center text-gray-500">No records found.</td>
                                     </tr>
                                 )}
                             </tbody>

@@ -85,9 +85,6 @@ export default function Header() {
                             </div>
                         )}
                     </div>
-
-                    {/* Radiology Logo */}
-                    <img src="/image/radiology_logo.png" alt="Radiology" className="w-[80px] h-auto object-contain hidden md:block opacity-90 drop-shadow-sm transform hover:scale-105 transition-transform duration-200" />
                 </div>
             </div>
 
