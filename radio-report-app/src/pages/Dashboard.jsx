@@ -49,23 +49,18 @@ export default function Dashboard() {
             const query = new URLSearchParams();
             query.append('page', page);
 
-            if (filters.id) {
-                // If ID is provided, prioritize it and ignore date constraints to find history.
-                query.append('id', filters.id);
-            } else {
-                // If no ID, apply all other filters including dates
-                Object.entries(filters).forEach(([key, value]) => {
-                    if (value && key !== 'id') { // Skip ID as it's empty
-                        if (key === 'serviceStatus') {
-                            // Map labels to numeric codes for backend if necessary
-                            const statusMap = { 'New': '0', 'Draft': '1', 'Final': '2' };
-                            query.append('service_status', statusMap[value] || value);
-                        }
-                        else if (key === 'patientType') query.append('patient_type', value);
-                        else query.append(key, value);
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value) {
+                    if (key === 'serviceStatus') {
+                        const statusMap = { 'New': '0', 'Draft': '1', 'Final': '2' };
+                        query.append('service_status', statusMap[value] || value);
+                    } else if (key === 'patientType') {
+                        query.append('patient_type', value);
+                    } else {
+                        query.append(key, value);
                     }
-                });
-            }
+                }
+            });
 
             const response = await fetch(`http://127.0.0.1:8000/api/patients/?${query.toString()}`, {
                 headers: {
