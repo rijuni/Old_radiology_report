@@ -20,7 +20,7 @@ export default function Login() {
         setError('');
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/api-token-auth/', {
+            const response = await fetch(`http://${window.location.hostname}:8000/api-token-auth/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
