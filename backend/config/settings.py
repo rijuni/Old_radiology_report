@@ -22,7 +22,7 @@ SECRET_KEY = 'django-insecure-r5t=e9=r6z-^z)g=@bqd!o5+9%@^x4=8@51bwaezxuf9i^9b%_
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -142,13 +142,8 @@ REST_FRAMEWORK = {
 }
 
 # CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = True
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:5173", # Frontend URL
-#     "http://localhost:3000",
-# ]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173", # Frontend URL
+    "http://localhost:3000",
+]
 
-# Media Files Configuration (for PDF/DOC reports)
-import os
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -102,7 +102,7 @@ class Command(BaseCommand):
                     service_status=service_status[:20],
                     patient_type="OP",
                     radiologist=radiologist[:255],
-                    report_path=report_path[:500] if report_path else None,
+                    report_path=report_path[:500] if 'report_path' in locals() else None,
                     exam_date=exam_date_val
                 )
                 patients_to_create.append(patient)
