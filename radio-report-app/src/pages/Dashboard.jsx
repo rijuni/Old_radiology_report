@@ -376,7 +376,23 @@ export default function Dashboard() {
                                                     {row.service_status}
                                                 </span>
                                             </td>
-                                            <td></td>
+                                            <td className="border p-2 text-center">
+                                                {row.report_url ? (
+                                                    <a
+                                                        href={row.report_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-teal-600 to-teal-500 text-white rounded-lg shadow hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs font-bold w-[130px] justify-center"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                        </svg>
+                                                        Download Report
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-gray-400 text-sm font-semibold italic">No Reports</span>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))
                                 ) : (
