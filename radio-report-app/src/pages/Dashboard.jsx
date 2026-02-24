@@ -67,7 +67,7 @@ export default function Dashboard() {
                 });
             }
 
-            const response = await fetch(`http://127.0.0.1:8000/api/patients/?${query.toString()}`, {
+            const response = await fetch(`/api/patients/?${query.toString()}`, {
                 headers: {
                     'Authorization': `Token ${token}`,
                     'Content-Type': 'application/json'

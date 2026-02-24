@@ -5,7 +5,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.pagination import PageNumberPagination
 from .models import User, Patient
-from .serializers import UserSerializer, PatientSerializer, RegisterSerializer
+from .serializers import UserSerializer, PatientSerializer, AdminUserCreateSerializer, PasswordResetSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from datetime import datetime
@@ -53,10 +53,31 @@ class PatientViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
-    permission_classes = [permissions.AllowAny]
-    serializer_class = RegisterSerializer
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAdminUser
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by('-date_joined')
+    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return AdminUserCreateSerializer
+        elif self.action == 'set_password':
+            return PasswordResetSerializer
+        return UserSerializer
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminUser])
+    def set_password(self, request, pk=None):
+        user = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user.set_password(serializer.validated_data['password'])
+            user.save()
+            return Response({'status': 'password set'})
+        else:
+            return Response(serializer.errors,
+                            status=status.HTTP_400_BAD_REQUEST)
 
 class CustomAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
@@ -71,38 +92,9 @@ class CustomAuthToken(ObtainAuthToken):
             'email': user.email,
             'username': user.username,
             'first_name': user.first_name,
-            'last_name': user.last_name
+            'last_name': user.last_name,
+            'is_staff': user.is_staff,
+            'is_superuser': user.is_superuser
         })
 
-class SeedDataView(APIView):
-    permission_classes = [permissions.AllowAny] # Or IsAuthenticated
 
-    def post(self, request):
-        mock_patients = [
-            {
-                "name": "Ramesh Kumar", "mrn": "MRN123", "accession_no": "ACC001", 
-                "modality": "CT", "exam_date": "2024-01-12", 
-                "service_status": "Final", "patient_type": "OP", "radiologist": "Dr. Smith",
-                "study_description": "CT Brain"
-            },
-            {
-                "name": "Sita Devi", "mrn": "MRN124", "accession_no": "ACC002", 
-                "modality": "US", "exam_date": "2024-01-13", 
-                "service_status": "Draft", "patient_type": "IP", "radiologist": "Dr. Doe",
-                "study_description": "US Abdomen"
-            },
-            {
-                "name": "John Doe", "mrn": "MRN125", "accession_no": "ACC003", 
-                "modality": "MRI", "exam_date": "2024-01-14", 
-                "service_status": "New", "patient_type": "OP", "radiologist": "Dr. Smith",
-                "study_description": "MRI Knee"
-            },
-        ]
-        
-        count = 0
-        for p_data in mock_patients:
-            if not Patient.objects.filter(mrn=p_data['mrn']).exists():
-                Patient.objects.create(**p_data)
-                count += 1
-        
-        return Response({"message": f"{count} Mock patients added"}, status=status.HTTP_201_CREATED)
