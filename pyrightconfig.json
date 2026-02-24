@@ -1,0 +1,11 @@
+{
+    "executionEnvironments": [
+        {
+            "root": "backend"
+        }
+    ],
+    "extraPaths": [
+        "backend",
+        "C:\\Users\\support\\AppData\\Roaming\\Python\\Python314\\site-packages"
+    ]
+}

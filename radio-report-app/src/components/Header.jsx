@@ -49,6 +49,15 @@ export default function Header() {
 
                 {/* Right Side: User Info & Radiology Logo */}
                 <div className="flex items-center gap-4">
+                    {localStorage.getItem('isAdmin') === 'true' && (
+                        <Link
+                            to="/admin"
+                            className="mr-4 px-4 py-2 bg-teal-50 text-teal-700 font-bold rounded-lg hover:bg-teal-100 transition-colors shadow-sm text-sm border border-teal-200 flex items-center gap-2"
+                        >
+                            <UserIcon size={16} /> Admin Panel
+                        </Link>
+                    )}
+
                     {/* User Details with Dropdown */}
                     <div className="relative" ref={dropdownRef}>
                         <div

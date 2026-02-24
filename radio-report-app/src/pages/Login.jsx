@@ -20,7 +20,7 @@ export default function Login() {
         setError('');
 
         try {
-            const response = await fetch(`http://${window.location.hostname}:8000/api-token-auth/`, {
+            const response = await fetch('/api-token-auth/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -35,6 +35,7 @@ export default function Login() {
                 localStorage.setItem('isAuthenticated', 'true');
                 localStorage.setItem('userId', data.user_id); // PK
                 localStorage.setItem('employeeId', data.username); // User ID / Employee ID
+                localStorage.setItem('isAdmin', data.is_staff);
 
                 const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Doctor';
                 localStorage.setItem('userFullName', fullName);
@@ -147,11 +148,8 @@ export default function Login() {
                     </form>
 
                     <div className="mt-10 text-center">
-                        <p className="text-gray-500 font-medium">
-                            Don't have an account?{' '}
-                            <Link to="/signup" className="text-teal-600 font-bold hover:text-teal-700 hover:underline transition-colors">
-                                Create account
-                            </Link>
+                        <p className="text-gray-500 font-medium text-sm">
+                            Need help? Contact system administrator.
                         </p>
                     </div>
                 </div>
