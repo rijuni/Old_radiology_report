@@ -9,6 +9,9 @@ from .serializers import UserSerializer, PatientSerializer, AdminUserCreateSeria
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from datetime import datetime
+import os
+from django.conf import settings
+from django.http import FileResponse, Http404
 
 class PatientPagination(PageNumberPagination):
     page_size = 100
@@ -97,4 +100,55 @@ class CustomAuthToken(ObtainAuthToken):
             'is_superuser': user.is_superuser
         })
 
+class ServeReportView(APIView):
+    permission_classes = [permissions.AllowAny]
 
+    def get(self, request):
+        path_query = request.query_params.get('path')
+        token_key = request.query_params.get('token')
+
+        # Authenticate via token in query param (needed because <a href> can't send headers)
+        user = request.user
+        if not user.is_authenticated and token_key:
+            try:
+                token = Token.objects.get(key=token_key)
+                user = token.user
+            except Token.DoesNotExist:
+                pass
+
+        if not user.is_authenticated:
+            return Response({"error": "Unauthorized. Invalid or missing token."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if not path_query:
+            return Response({"error": "No path provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # New structure: media/Reports/KIMSTELERAD/<DD-MM-YYYY>/<uid>/reports/<file>
+        # DB stores:                 KIMSTELERAD/<DD-MM-YYYY>/<uid>/reports/<file>
+        # So just join: MEDIA_ROOT/Reports/ + path_query
+        reports_base = os.path.join(settings.MEDIA_ROOT, 'Reports')
+        direct_path = os.path.join(reports_base, path_query.replace('/', os.sep))
+
+        found_path = None
+
+        # Strategy 1: Direct path match (fast — O(1))
+        if os.path.exists(direct_path):
+            found_path = direct_path
+        else:
+            # Strategy 2: Fallback — search by filename using os.walk
+            file_name = path_query.split('/')[-1]
+            for root_dir, dirs, files in os.walk(reports_base):
+                if file_name in files:
+                    found_path = os.path.join(root_dir, file_name)
+                    break
+
+        if found_path and os.path.exists(found_path):
+            try:
+                file_name = os.path.basename(found_path)
+                file_handle = open(found_path, 'rb')
+                response = FileResponse(file_handle, as_attachment=False)
+                response['Content-Disposition'] = f'inline; filename="{file_name}"'
+                return response
+            except Exception as e:
+                return Response({"error": f"Error opening file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        raise Http404("Report not found on server")

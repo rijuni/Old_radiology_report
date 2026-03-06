@@ -1,3 +1,0 @@
-Total Patients: 767978
-Patients with report_path: 600861
-Sample Path: KIMSTELERAD/04-04-2022/1.3.6.1.4.1.24837.20220404112134050.13981/reports/remote_report_2_1542022_122111.doc

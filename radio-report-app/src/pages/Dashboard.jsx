@@ -215,6 +215,9 @@ export default function Dashboard() {
                                     <option value="NM">NM</option>
                                     <option value="DX">DX</option>
                                     <option value="PT">PT</option>
+                                    <option value="ES">ES</option>
+                                    <option value="OT">OT</option>
+                                    <option value="UNKNOWN">Unknown</option>
                                 </select>
                             </div>
 
@@ -372,29 +375,44 @@ export default function Dashboard() {
                                             <td className="border p-2 text-center">{row.modality}</td>
                                             <td className="border p-2 text-center">{row.exam_date}</td>
                                             <td className="border p-2 text-center">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${row.service_status === 'Final' || row.service_status === '2' ? 'bg-green-100 text-green-700' :
-                                                    row.service_status === 'Draft' || row.service_status === '1' ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-blue-100 text-blue-700'
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${(row.service_status === 'Final' || row.service_status === '2' || row.service_status === '3') ? 'bg-green-100 text-green-700' :
+                                                        (row.service_status === 'Draft' || row.service_status === '1') ? 'bg-yellow-100 text-yellow-700' :
+                                                            (row.service_status === 'New' || row.service_status === '0') ? 'bg-blue-100 text-blue-700' :
+                                                                'bg-gray-100 text-gray-600'
                                                     }`}>
-                                                    {row.service_status === '0' ? 'New' :
-                                                        row.service_status === '1' ? 'Draft' :
-                                                            row.service_status === '2' ? 'Final' :
-                                                                row.service_status}
+                                                    {row.service_status === '0' || row.service_status === 'New' ? 'New' :
+                                                        row.service_status === '1' || row.service_status === 'Draft' ? 'Draft' :
+                                                            row.service_status === '2' || row.service_status === 'Final' ? 'Final' :
+                                                                row.service_status === '3' ? 'Final' :
+                                                                    row.service_status || 'Unknown'}
                                                 </span>
                                             </td>
                                             <td className="border p-2 text-center">
-                                                {row.report_url ? (
-                                                    <a
-                                                        href={row.report_url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-teal-600 to-teal-500 text-white rounded-lg shadow hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs font-bold w-[130px] justify-center"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                        </svg>
-                                                        Download Report
-                                                    </a>
+                                                {row.report_path ? (
+                                                    <div className="flex flex-col gap-2 items-center">
+                                                        <a
+                                                            href={`/api/reports/view/?path=${encodeURIComponent(row.report_path)}&token=${localStorage.getItem('token')}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-teal-600 to-teal-500 text-white rounded-lg shadow hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs font-bold w-[120px] justify-center"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                            </svg>
+                                                            View Report
+                                                        </a>
+                                                        <a
+                                                            href={`/api/reports/view/?path=${encodeURIComponent(row.report_path)}&token=${localStorage.getItem('token')}`}
+                                                            download={`report_${row.mrn}.pdf`}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg shadow hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs font-bold w-[120px] justify-center"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                            </svg>
+                                                            Download
+                                                        </a>
+                                                    </div>
                                                 ) : (
                                                     <span className="text-gray-400 text-sm font-semibold italic">No Reports</span>
                                                 )}
