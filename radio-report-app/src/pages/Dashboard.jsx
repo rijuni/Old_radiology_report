@@ -2,9 +2,131 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useNavigate } from 'react-router-dom';
+import {
+    Search, RotateCcw, Eye, Download,
+    ChevronLeft, ChevronRight, AlertTriangle,
+    ChevronDown, ChevronUp,
+    Database, CheckCircle2, Clock, FilePlus,
+} from 'lucide-react';
 
+// ── Skeleton Row ──────────────────────────────────────────────────────────────
+function SkeletonRow() {
+    return (
+        <tr>
+            {[...Array(9)].map((_, i) => (
+                <td key={i} className="px-4 py-3">
+                    <div className="skeleton" style={{ height: '13px', width: i === 2 ? '70%' : i === 3 ? '80%' : '50%', minWidth: '28px' }} />
+                </td>
+            ))}
+        </tr>
+    );
+}
 
+// ── Status Badge ──────────────────────────────────────────────────────────────
+function StatusBadge({ status }) {
+    const s = status || '';
+    const isFinal = s === 'Final' || s === '2' || s === '3';
+    const isDraft = s === 'Draft' || s === '1';
+    const isNew = s === 'New' || s === '0';
+    const label = isFinal ? 'Final' : isDraft ? 'Draft' : isNew ? 'New' : s || '—';
 
+    const cfg = isFinal
+        ? { bg: '#dcfce7', border: '#86efac', color: '#15803d' }
+        : isDraft
+            ? { bg: '#fef9c3', border: '#fde047', color: '#a16207' }
+            : isNew
+                ? { bg: '#dbeafe', border: '#93c5fd', color: '#1d4ed8' }
+                : { bg: '#f1f5f9', border: '#e2e8f0', color: '#94a3b8' };
+
+    return (
+        <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+            style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color }}
+        >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.color }} />
+            {label}
+        </span>
+    );
+}
+
+// ── Patient Type Badge ────────────────────────────────────────────────────────
+function TypeBadge({ type }) {
+    if (!type) return <span style={{ color: '#cbd5e1', fontSize: '12px' }}>—</span>;
+    const isIP = type === 'IP';
+    return (
+        <span
+            className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold"
+            style={{
+                background: isIP ? '#f3f0ff' : '#ecfdf5',
+                border: `1px solid ${isIP ? '#e9d5ff' : '#a7f3d0'}`,
+                color: isIP ? '#7c3aed' : '#065f46',
+            }}
+        >
+            {isIP ? '🏥 IP' : '🚶 OP'}
+        </span>
+    );
+}
+
+// ── Stat Card ─────────────────────────────────────────────────────────────────
+function StatCard({ icon: Icon, label, value, accent, primary }) {
+    return (
+        <div
+            className="flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+            style={{
+                background: primary ? '#1e293b' : '#ffffff',
+                border: primary ? 'none' : '1px solid #e2e8f0',
+                boxShadow: primary ? '0 4px 16px rgba(30,41,59,0.3)' : '0 1px 4px rgba(0,0,0,0.05)',
+            }}
+        >
+            <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                style={{
+                    background: primary ? 'rgba(255,255,255,0.12)' : `${accent}18`,
+                    border: `1.5px solid ${primary ? 'rgba(255,255,255,0.15)' : accent + '40'}`,
+                }}
+            >
+                <Icon size={20} style={{ color: primary ? '#fff' : accent }} />
+            </div>
+            <div>
+                <p className="text-xs font-bold uppercase tracking-wider mb-0.5"
+                    style={{ color: primary ? 'rgba(255,255,255,0.55)' : '#94a3b8' }}>
+                    {label}
+                </p>
+                <p className="text-2xl font-extrabold leading-none"
+                    style={{ color: primary ? '#fff' : '#1e293b', animation: 'countUp 0.4s ease-out' }}>
+                    {value.toLocaleString()}
+                </p>
+            </div>
+        </div>
+    );
+}
+
+// ── Filter Field ──────────────────────────────────────────────────────────────
+function FilterInput({ label, required, ...props }) {
+    return (
+        <div className="flex flex-col gap-1">
+            <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#64748b' }}>
+                {label}{required && <span style={{ color: '#ef4444', marginLeft: '3px' }}>*</span>}
+            </label>
+            <input {...props} className="input-slate" />
+        </div>
+    );
+}
+
+function FilterSelect({ label, children, disabled, ...props }) {
+    return (
+        <div className="flex flex-col gap-1">
+            <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: disabled ? '#cbd5e1' : '#64748b' }}>
+                {label}
+            </label>
+            <select {...props} disabled={disabled} className="input-slate" style={{ cursor: disabled ? 'not-allowed' : 'pointer', appearance: 'none' }}>
+                {children}
+            </select>
+        </div>
+    );
+}
+
+// ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
     const navigate = useNavigate();
     const [patients, setPatients] = useState([]);
@@ -12,76 +134,45 @@ export default function Dashboard() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
-
-    // Auth check
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            navigate('/login');
-        }
-    }, [navigate]);
-
+    const [filtersExpanded, setFiltersExpanded] = useState(true);
+    const [error, setError] = useState('');
     const [searchParams, setSearchParams] = useState({
-        name: '',
-        id: '', // MRN
-        modality: '',
-        study: '', // Added Study
-        serviceStatus: '',
-        patientType: '',
-        radiologist: '',
-        accessionNo: '',
-        fromDate: '',
-        toDate: '',
+        name: '', id: '', modality: '', study: '',
+        serviceStatus: '', patientType: '', radiologist: '',
+        accessionNo: '', fromDate: '', toDate: '',
     });
 
-    const [error, setError] = useState('');
-
     useEffect(() => {
-        // on Load: fetch first page of patients
-        fetchPatients({}, 1);
-    }, []);
+        if (!localStorage.getItem('token')) navigate('/login');
+    }, [navigate]);
+
+    useEffect(() => { fetchPatients({}, 1); }, []);
 
     const fetchPatients = async (filters, page = 1) => {
-        setLoading(true);
-        setError('');
+        setLoading(true); setError('');
         try {
             const token = localStorage.getItem('token');
             const query = new URLSearchParams();
             query.append('page', page);
-
             if (filters.id) {
-                // If ID is provided, prioritize it and ignore date constraints to find history.
                 query.append('id', filters.id);
             } else {
-                // If no ID, apply all other filters including dates
                 Object.entries(filters).forEach(([key, value]) => {
-                    if (value && key !== 'id') { // Skip ID as it's empty
+                    if (value && key !== 'id') {
                         if (key === 'serviceStatus') {
-                            // Map labels to numeric codes for backend if necessary
-                            const statusMap = { 'New': '0', 'Draft': '1', 'Final': '2' };
-                            query.append('service_status', statusMap[value] || value);
-                        }
-                        else if (key === 'patientType') query.append('patient_type', value);
+                            const map = { 'New': '0', 'Draft': '1', 'Final': '2' };
+                            query.append('service_status', map[value] || value);
+                        } else if (key === 'patientType') query.append('patient_type', value);
                         else query.append(key, value);
                     }
                 });
             }
-
-            const response = await fetch(`/api/patients/?${query.toString()}`, {
-                headers: {
-                    'Authorization': `Token ${token}`,
-                    'Content-Type': 'application/json'
-                }
+            const res = await fetch(`/api/patients/?${query.toString()}`, {
+                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' }
             });
-
-            if (response.status === 401) {
-                handleLogout();
-                return;
-            }
-
-            if (!response.ok) throw new Error('Failed to fetch data');
-
-            const data = await response.json();
+            if (res.status === 401) { localStorage.clear(); navigate('/login'); return; }
+            if (!res.ok) throw new Error('fetch failed');
+            const data = await res.json();
             setPatients(data.results || []);
             setTotalCount(data.count || 0);
             setTotalPages(Math.ceil((data.count || 0) / 100));
@@ -97,14 +188,11 @@ export default function Dashboard() {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setError('');
-
         if (name === 'fromDate') {
             setSearchParams(prev => {
-                const newData = { ...prev, [name]: value };
-                if (newData.toDate && newData.toDate < value) {
-                    newData.toDate = value;
-                }
-                return newData;
+                const nd = { ...prev, [name]: value };
+                if (nd.toDate && nd.toDate < value) nd.toDate = value;
+                return nd;
             });
         } else {
             setSearchParams(prev => ({ ...prev, [name]: value }));
@@ -112,348 +200,299 @@ export default function Dashboard() {
     };
 
     const validateSearch = () => {
-        // Rule: If Patient ID is present, we can search.
-        // If no ID, we MUST have both From Date and To Date.
-
-        if (searchParams.id) {
-            return true;
-        }
-
+        if (searchParams.id) return true;
         if (!searchParams.fromDate || !searchParams.toDate) {
-            setError("Please provide either a Patient ID OR a valid Date Range.");
-            return false;
+            setError('Please provide either a Patient ID OR a valid Date Range.'); return false;
         }
-
-        const fromD = new Date(searchParams.fromDate);
-        const toD = new Date(searchParams.toDate);
-
-        if (fromD > toD) {
-            setError("From Date cannot be later than To Date.");
-            return false;
+        if (new Date(searchParams.fromDate) > new Date(searchParams.toDate)) {
+            setError('From Date cannot be later than To Date.'); return false;
         }
         return true;
     };
 
-    const handleSearch = () => {
-        if (!validateSearch()) return;
-        fetchPatients(searchParams, 1);
-    };
-
+    const handleSearch = () => { if (validateSearch()) fetchPatients(searchParams, 1); };
     const handleReset = () => {
         const today = new Date().toISOString().split('T')[0];
-        const defaults = {
-            name: '',
-            id: '',
-            modality: '',
-            study: '',
-            serviceStatus: '',
-            patientType: '',
-            radiologist: '',
-            accessionNo: '',
-            fromDate: today,
-            toDate: today,
-        };
-        setSearchParams(defaults);
-        fetchPatients(defaults, 1);
-        setError('');
+        const d = { name: '', id: '', modality: '', study: '', serviceStatus: '', patientType: '', radiologist: '', accessionNo: '', fromDate: today, toDate: today };
+        setSearchParams(d); fetchPatients(d, 1); setError('');
     };
 
     const today = new Date().toISOString().split('T')[0];
+    const stats = {
+        total: patients.length,
+        final: patients.filter(p => ['Final', '2', '3'].includes(p.service_status)).length,
+        draft: patients.filter(p => ['Draft', '1'].includes(p.service_status)).length,
+        newR: patients.filter(p => ['New', '0'].includes(p.service_status)).length,
+    };
+
+    const TH = ['Sl No', 'Patient ID', 'Patient Name', 'Study Description', 'Modality', 'Type', 'Date', 'Status', 'Action'];
 
     return (
-        <div className="flex flex-col min-h-screen">
+        <div className="flex flex-col min-h-screen" style={{ background: '#f1f5f9' }}>
             <Header />
 
-            <main className="flex-1 pb-20 px-4">
-                <section className="bg-white/80 backdrop-blur-md p-8 w-full rounded-3xl mb-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] relative border border-white/60 mt-6">
+            <main className="flex-1 pb-16 px-4 md:px-6 pt-5" style={{ animation: 'fadeIn 0.4s ease-out' }}>
 
-                    {/* Search Box with 3D inset look */}
-                    <div className="bg-gradient-to-b from-slate-50 to-slate-100 p-2 rounded-2xl mb-8 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] border border-slate-200/60">
-                        {/* Row 1 */}
-                        <div className="flex flex-wrap gap-4 mb-4">
-                            <div className="flex items-center gap-2">
-                                <label className="font-bold whitespace-nowrap">Patient Name :</label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={searchParams.name}
-                                    onChange={handleChange}
-                                    placeholder="Patient Name"
-                                    className="p-2.5 w-44 border border-slate-200 rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.03)] focus:shadow-[0_0_0_4px_rgba(13,148,136,0.1)] focus:border-teal-500 transition-all outline-none bg-white font-medium text-slate-700"
-                                />
-                            </div>
+                {/* ── Stats Row ────────────────────────────────────────── */}
+                {!loading && patients.length > 0 && (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5" style={{ animation: 'slideUp 0.35s ease-out' }}>
+                        <StatCard icon={Database} label="Showing" value={stats.total} accent="#334155" primary />
+                        <StatCard icon={CheckCircle2} label="Final" value={stats.final} accent="#16a34a" />
+                        <StatCard icon={Clock} label="Draft" value={stats.draft} accent="#ca8a04" />
+                        <StatCard icon={FilePlus} label="New" value={stats.newR} accent="#2563eb" />
+                    </div>
+                )}
 
-                            <div className="flex items-center gap-2">
-                                <label className="font-bold whitespace-nowrap flex items-center gap-1">
-                                    Patient ID :<span className="text-red-500 font-bold">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    name="id"
-                                    value={searchParams.id}
-                                    onChange={handleChange}
-                                    placeholder="Enter MRN"
-                                    className="p-2.5 w-44 border border-slate-200 rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.03)] focus:shadow-[0_0_0_4px_rgba(13,148,136,0.1)] focus:border-teal-500 transition-all outline-none bg-white font-medium text-slate-700"
-                                />
-                            </div>
+                {/* ── Main Card ────────────────────────────────────────── */}
+                <div className="card-slate overflow-hidden">
 
-                            <div className="flex items-center gap-2">
-                                <label className="font-bold whitespace-nowrap">Modality :</label>
-                                <select
-                                    name="modality"
-                                    value={searchParams.modality}
-                                    onChange={handleChange}
-                                    className="p-2.5 w-44 border border-slate-200 rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.03)] focus:shadow-[0_0_0_4px_rgba(13,148,136,0.1)] focus:border-teal-500 transition-all outline-none bg-white font-medium text-slate-700"
-                                >
-                                    <option value="">All</option>
-                                    <option value="CR">CR</option>
-                                    <option value="US">US</option>
-                                    <option value="CT">CT</option>
-                                    <option value="MR">MR</option>
-                                    <option value="MG">MG</option>
-                                    <option value="ECG">ECG</option>
-                                    <option value="NM">NM</option>
-                                    <option value="DX">DX</option>
-                                    <option value="PT">PT</option>
-                                    <option value="ES">ES</option>
-                                    <option value="OT">OT</option>
-                                    <option value="UNKNOWN">Unknown</option>
-                                </select>
+                    {/* Filter Panel Toggle */}
+                    <div
+                        className="flex items-center justify-between px-5 py-3 cursor-pointer select-none"
+                        style={{
+                            background: '#f8fafc',
+                            borderBottom: filtersExpanded ? '1px solid #e2e8f0' : 'none',
+                        }}
+                        onClick={() => setFiltersExpanded(p => !p)}
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                                style={{ background: '#e2e8f0', border: '1px solid #cbd5e1' }}>
+                                <Search size={14} style={{ color: '#475569' }} />
                             </div>
-
-                            {/* New Study Field */}
-                            <div className="flex items-center gap-2">
-                                <label className="font-bold whitespace-nowrap">Study :</label>
-                                <input
-                                    type="text"
-                                    name="study"
-                                    value={searchParams.study}
-                                    onChange={handleChange}
-                                    placeholder="Study Description"
-                                    className="p-2.5 w-44 border border-slate-200 rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.03)] focus:shadow-[0_0_0_4px_rgba(13,148,136,0.1)] focus:border-teal-500 transition-all outline-none bg-white font-medium text-slate-700"
-                                />
-                            </div>
+                            <span className="text-sm font-bold" style={{ color: '#334155' }}>Search Filters</span>
                         </div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium" style={{ color: '#94a3b8' }}>
+                                {filtersExpanded ? 'Collapse' : 'Expand'}
+                            </span>
+                            {filtersExpanded
+                                ? <ChevronUp size={14} style={{ color: '#94a3b8' }} />
+                                : <ChevronDown size={14} style={{ color: '#94a3b8' }} />
+                            }
+                        </div>
+                    </div>
 
-                        {/* Row 2 */}
-                        <div className="flex flex-wrap gap-4 mb-4">
-                            <div className="flex items-center gap-2">
-                                <label className="font-bold whitespace-nowrap">Service Status :</label>
-                                <select
-                                    name="serviceStatus"
-                                    value={searchParams.serviceStatus}
-                                    onChange={handleChange}
-                                    className="p-2.5 w-44 border border-slate-200 rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.03)] focus:shadow-[0_0_0_4px_rgba(13,148,136,0.1)] focus:border-teal-500 transition-all outline-none bg-white font-medium text-slate-700"
-                                >
-                                    <option value="">Select</option>
+                    {/* Filter Body */}
+                    {filtersExpanded && (
+                        <div
+                            className="p-5"
+                            style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', animation: 'slideUp 0.2s ease-out' }}
+                        >
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-4">
+                                <FilterInput label="Patient Name" type="text" name="name" value={searchParams.name} onChange={handleChange} placeholder="Patient Name" />
+                                <FilterInput label="Patient ID" required type="text" name="id" value={searchParams.id} onChange={handleChange} placeholder="Enter MRN" />
+                                <FilterSelect label="Modality" name="modality" value={searchParams.modality} onChange={handleChange}>
+                                    <option value="">All Modalities</option>
+                                    {['CR', 'US', 'CT', 'MR', 'MG', 'ECG', 'NM', 'DX', 'PT', 'ES', 'OT', 'UNKNOWN'].map(m => <option key={m} value={m}>{m}</option>)}
+                                </FilterSelect>
+                                <FilterInput label="Study" type="text" name="study" value={searchParams.study} onChange={handleChange} placeholder="Study Description" />
+                                <FilterInput label="Accession No" type="text" name="accessionNo" value={searchParams.accessionNo} onChange={handleChange} placeholder="Accession No" />
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                <FilterSelect label="Service Status" name="serviceStatus" value={searchParams.serviceStatus} onChange={handleChange}>
+                                    <option value="">All Statuses</option>
                                     <option value="New">New</option>
                                     <option value="Draft">Draft</option>
                                     <option value="Final">Final</option>
-                                </select>
+                                </FilterSelect>
+                                <FilterSelect label="Patient Type" name="patientType" value={searchParams.patientType} onChange={handleChange}>
+                                    <option value="">All Types</option>
+                                    <option value="OP">OP — Outpatient</option>
+                                    <option value="IP">IP — Inpatient</option>
+                                </FilterSelect>
+                                <FilterSelect label="Radiologist" disabled>
+                                    <option value="">Unavailable</option>
+                                </FilterSelect>
+                                <FilterInput label="From Date" required type="date" name="fromDate" value={searchParams.fromDate} max={today} onChange={handleChange} />
+                                <FilterInput label="To Date" required type="date" name="toDate" value={searchParams.toDate} min={searchParams.fromDate} max={today} onChange={handleChange} />
                             </div>
 
-                            <div className="flex items-center gap-2">
-                                <label className="font-bold whitespace-nowrap">Patient Type :</label>
-                                <select
-                                    name="patientType"
-                                    value={searchParams.patientType}
-                                    onChange={handleChange}
-                                    className="p-2.5 w-44 border border-slate-200 rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.03)] focus:shadow-[0_0_0_4px_rgba(13,148,136,0.1)] focus:border-teal-500 transition-all outline-none bg-white font-medium text-slate-700"
+                            <div className="flex items-center gap-3 mt-5 flex-wrap">
+                                <button
+                                    onClick={handleSearch}
+                                    className="btn-slate flex items-center gap-2"
                                 >
-                                    <option value="">Select</option>
-                                    <option value="OP">OP</option>
-                                    <option value="IP">IP</option>
-                                </select>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <label className="font-bold whitespace-nowrap text-gray-400">Radiologist :</label>
-                                <select
-                                    name="radiologist"
-                                    value={searchParams.radiologist}
-                                    onChange={handleChange}
-                                    disabled
-                                    className="p-2.5 w-44 border border-slate-200 rounded-xl bg-gray-100 font-medium text-gray-400 cursor-not-allowed outline-none"
+                                    <Search size={14} /> Search Records
+                                </button>
+                                <button
+                                    onClick={handleReset}
+                                    className="btn-outline flex items-center gap-2"
                                 >
-                                    <option value="">Select (Unavailable)</option>
-                                </select>
+                                    <RotateCcw size={14} /> Reset
+                                </button>
+                                {error && (
+                                    <div
+                                        className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold"
+                                        style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', animation: 'slideUp 0.2s ease-out' }}
+                                    >
+                                        <AlertTriangle size={12} /> {error}
+                                    </div>
+                                )}
                             </div>
                         </div>
-
-                        {/* Row 3 */}
-                        <div className="flex flex-wrap gap-4">
-                            <div className="flex items-center gap-2">
-                                <label className="font-bold whitespace-nowrap">Accession No :</label>
-                                <input
-                                    type="text"
-                                    name="accessionNo"
-                                    value={searchParams.accessionNo}
-                                    onChange={handleChange}
-                                    placeholder="Accession No"
-                                    className="p-2.5 w-44 border border-slate-200 rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.03)] focus:shadow-[0_0_0_4px_rgba(13,148,136,0.1)] focus:border-teal-500 transition-all outline-none bg-white font-medium text-slate-700"
-                                />
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <label className="font-bold whitespace-nowrap flex items-center gap-1">
-                                    From Date <span className="text-red-500 font-bold">*</span>
-                                </label>
-                                <input
-                                    type="date"
-                                    name="fromDate"
-                                    value={searchParams.fromDate}
-                                    max={today}
-                                    onChange={handleChange}
-                                    className="p-2.5 w-44 border border-slate-200 rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.03)] focus:shadow-[0_0_0_4px_rgba(13,148,136,0.1)] focus:border-teal-500 transition-all outline-none bg-white font-medium text-slate-700"
-                                />
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <label className="font-bold whitespace-nowrap flex items-center gap-1">
-                                    To Date <span className="text-red-500 font-bold">*</span>
-                                </label>
-                                <input
-                                    type="date"
-                                    name="toDate"
-                                    value={searchParams.toDate}
-                                    min={searchParams.fromDate}
-                                    max={today}
-                                    onChange={handleChange}
-                                    className="p-2.5 w-44 border border-slate-200 rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.03)] focus:shadow-[0_0_0_4px_rgba(13,148,136,0.1)] focus:border-teal-500 transition-all outline-none bg-white font-medium text-slate-700"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-center gap-8 my-3">
-                        <button
-                            onClick={handleSearch}
-                            className="bg-gradient-to-r from-teal-600 to-teal-500 text-white px-10 py-3 rounded-xl shadow-[0_8px_10px_-6px_rgba(13,148,136,0.4)] hover:shadow-[0_12px_25px_-8px_rgba(13,148,136,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all duration-200 font-bold tracking-wide text-sm border-t border-white/20"
-                        >
-                            Search
-                        </button>
-                        <button
-                            onClick={handleReset}
-                            className="bg-white text-slate-600 px-10 py-3 rounded-xl shadow-[0_4px_15px_-3px_rgba(0,0,0,0.07)] hover:bg-slate-50 hover:text-slate-800 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 font-bold tracking-wide text-sm border border-slate-200"
-                        >
-                            Reset
-                        </button>
-                    </div>
-
-                    {error && (
-                        <p className="text-red-600 font-bold text-center animate-pulse mb-4">{error}</p>
                     )}
 
-                    <div className="overflow-hidden rounded-2xl shadow-xl border border-slate-100 bg-white">
-                        <table className="w-full border-collapse bg-white">
+                    {/* Results info strip */}
+                    {!loading && patients.length > 0 && (
+                        <div
+                            className="px-5 py-2 flex items-center gap-1.5 text-xs"
+                            style={{ borderBottom: '1px solid #f1f5f9', color: '#94a3b8', background: '#fff' }}
+                        >
+                            Showing page <span className="font-bold text-slate-600 mx-0.5">{currentPage}</span> of
+                            <span className="font-bold text-slate-600 mx-0.5">{totalPages}</span> —
+                            <span className="font-bold text-slate-700 mx-0.5">{totalCount.toLocaleString()}</span> total records
+                        </div>
+                    )}
+
+                    {/* ── Table ──────────────────────────────────────────── */}
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-sm">
                             <thead>
-                                <tr className="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white shadow-md">
-                                    <th className="border p-2 text-left">Sl No</th>
-                                    <th className="border p-2 text-left">Patient ID</th>
-                                    <th className="p-3 text-left font-bold tracking-wide">Patient Name</th>
-                                    <th className="border p-2 text-left">Study Description</th>
-                                    <th className="border p-2 text-center">Modality</th>
-                                    <th className="border p-2 text-center">Date</th>
-                                    <th className="border p-2 text-center">Status</th>
-                                    <th className="border p-2 text-center">Action</th>
+                                <tr style={{ background: '#334155' }}>
+                                    {TH.map(th => (
+                                        <th
+                                            key={th}
+                                            className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
+                                            style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}
+                                        >
+                                            {th}
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr>
-                                        <td colSpan="7" className="p-8 text-center text-gray-500 font-medium animate-pulse">
-                                            Loading patient records...
-                                        </td>
-                                    </tr>
+                                    [...Array(8)].map((_, i) => <SkeletonRow key={i} />)
                                 ) : patients.length > 0 ? (
                                     patients.map((row, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50">
-                                            <td className="border p-2">{(currentPage - 1) * 100 + idx + 1}</td>
-                                            <td className="border p-2">{row.mrn}</td>
-                                            <td className="border p-2">{row.name}</td>
-                                            <td className="border p-2">{row.study_description}</td>
-                                            <td className="border p-2 text-center">{row.modality}</td>
-                                            <td className="border p-2 text-center">{row.exam_date}</td>
-                                            <td className="border p-2 text-center">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${(row.service_status === 'Final' || row.service_status === '2' || row.service_status === '3') ? 'bg-green-100 text-green-700' :
-                                                        (row.service_status === 'Draft' || row.service_status === '1') ? 'bg-yellow-100 text-yellow-700' :
-                                                            (row.service_status === 'New' || row.service_status === '0') ? 'bg-blue-100 text-blue-700' :
-                                                                'bg-gray-100 text-gray-600'
-                                                    }`}>
-                                                    {row.service_status === '0' || row.service_status === 'New' ? 'New' :
-                                                        row.service_status === '1' || row.service_status === 'Draft' ? 'Draft' :
-                                                            row.service_status === '2' || row.service_status === 'Final' ? 'Final' :
-                                                                row.service_status === '3' ? 'Final' :
-                                                                    row.service_status || 'Unknown'}
+                                        <tr
+                                            key={idx}
+                                            style={{
+                                                background: idx % 2 === 0 ? '#ffffff' : '#f8fafc',
+                                                borderBottom: '1px solid #f1f5f9',
+                                                transition: 'background 0.12s',
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                                            onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f8fafc'; }}
+                                        >
+                                            {/* Sl No */}
+                                            <td className="px-4 py-3 text-xs font-medium" style={{ color: '#cbd5e1' }}>
+                                                {(currentPage - 1) * 100 + idx + 1}
+                                            </td>
+                                            {/* MRN */}
+                                            <td className="px-4 py-3 font-mono text-xs font-bold" style={{ color: '#2563eb' }}>
+                                                {row.mrn}
+                                            </td>
+                                            {/* Name */}
+                                            <td className="px-4 py-3 font-semibold text-sm" style={{ color: '#1e293b' }}>
+                                                {row.name}
+                                            </td>
+                                            {/* Study */}
+                                            <td className="px-4 py-3 text-xs" style={{ color: '#64748b', maxWidth: '220px' }}>
+                                                {row.study_description}
+                                            </td>
+                                            {/* Modality */}
+                                            <td className="px-4 py-3 text-center">
+                                                <span
+                                                    className="px-2 py-1 rounded font-mono text-xs font-bold"
+                                                    style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569' }}
+                                                >
+                                                    {row.modality}
                                                 </span>
                                             </td>
-                                            <td className="border p-2 text-center">
+                                            {/* Patient Type */}
+                                            <td className="px-4 py-3 text-center">
+                                                <TypeBadge type={row.patient_type} />
+                                            </td>
+                                            {/* Date */}
+                                            <td className="px-4 py-3 text-center text-xs font-medium" style={{ color: '#94a3b8' }}>
+                                                {row.exam_date}
+                                            </td>
+                                            {/* Status */}
+                                            <td className="px-4 py-3 text-center">
+                                                <StatusBadge status={row.service_status} />
+                                            </td>
+                                            {/* Action */}
+                                            <td className="px-4 py-3">
                                                 {row.report_path ? (
-                                                    <div className="flex flex-col gap-2 items-center">
+                                                    <div className="flex items-center gap-2 justify-center">
                                                         <a
                                                             href={`/api/reports/view/?path=${encodeURIComponent(row.report_path)}&token=${localStorage.getItem('token')}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-teal-600 to-teal-500 text-white rounded-lg shadow hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs font-bold w-[120px] justify-center"
+                                                            target="_blank" rel="noopener noreferrer"
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all duration-150"
+                                                            style={{ background: '#2563eb', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' }}
+                                                            onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
                                                         >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                            </svg>
-                                                            View Report
+                                                            <Eye size={12} /> View
                                                         </a>
                                                         <a
                                                             href={`/api/reports/view/?path=${encodeURIComponent(row.report_path)}&token=${localStorage.getItem('token')}`}
                                                             download={`report_${row.mrn}.pdf`}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg shadow hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs font-bold w-[120px] justify-center"
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
+                                                            style={{ background: '#f1f5f9', border: '1.5px solid #e2e8f0', color: '#475569' }}
+                                                            onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; }}
                                                         >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                            </svg>
-                                                            Download
+                                                            <Download size={12} /> PDF
                                                         </a>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-gray-400 text-sm font-semibold italic">No Reports</span>
+                                                    <span className="text-xs italic" style={{ color: '#cbd5e1' }}>No Report</span>
                                                 )}
                                             </td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="7" className="p-4 text-center text-gray-500">No records found.</td>
+                                        <td colSpan={TH.length} className="py-16 text-center">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                                                    style={{ background: '#f1f5f9', border: '2px solid #e2e8f0' }}>
+                                                    <Search size={24} style={{ color: '#cbd5e1' }} />
+                                                </div>
+                                                <p className="text-sm font-bold" style={{ color: '#94a3b8' }}>No records found</p>
+                                                <p className="text-xs" style={{ color: '#cbd5e1' }}>Try adjusting your search filters</p>
+                                            </div>
+                                        </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
 
-                    {/* Pagination Controls */}
+                    {/* ── Pagination ──────────────────────────────────────── */}
                     {totalPages > 1 && (
-                        <div className="flex justify-between items-center mt-6 px-4">
-                            <div className="text-sm text-gray-600">
-                                Showing page {currentPage} of {totalPages} ({totalCount.toLocaleString()} total records)
-                            </div>
+                        <div
+                            className="flex justify-between items-center px-5 py-3"
+                            style={{ borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}
+                        >
+                            <span className="text-xs font-medium" style={{ color: '#94a3b8' }}>
+                                Page <span className="font-bold text-slate-600">{currentPage}</span> of{' '}
+                                <span className="font-bold text-slate-600">{totalPages}</span>
+                            </span>
                             <div className="flex gap-2">
-                                <button
-                                    onClick={() => fetchPatients(searchParams, currentPage - 1)}
-                                    disabled={currentPage === 1}
-                                    className="px-4 py-2 bg-teal-600 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-teal-700 transition-colors"
-                                >
-                                    Previous
-                                </button>
-                                <button
-                                    onClick={() => fetchPatients(searchParams, currentPage + 1)}
-                                    disabled={currentPage === totalPages}
-                                    className="px-4 py-2 bg-teal-600 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-teal-700 transition-colors"
-                                >
-                                    Next
-                                </button>
+                                {[
+                                    { label: 'Previous', Icon: ChevronLeft, disabled: currentPage === 1, dir: -1 },
+                                    { label: 'Next', Icon: ChevronRight, disabled: currentPage === totalPages, dir: 1 },
+                                ].map(({ label, Icon, disabled, dir }) => (
+                                    <button
+                                        key={label}
+                                        onClick={() => fetchPatients(searchParams, currentPage + dir)}
+                                        disabled={disabled}
+                                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+                                        style={{ background: '#fff', border: '1.5px solid #e2e8f0', color: '#475569' }}
+                                        onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = '#f1f5f9'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+                                    >
+                                        {dir === -1 && <Icon size={14} />}{label}{dir === 1 && <Icon size={14} />}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     )}
-
-                </section>
+                </div>
             </main>
 
             <Footer />

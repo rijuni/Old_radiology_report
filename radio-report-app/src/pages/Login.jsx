@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { User, Lock, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -16,142 +17,252 @@ export default function Login() {
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        setLoading(true);
-        setError('');
-
+        setLoading(true); setError('');
         try {
-            const response = await fetch('/api-token-auth/', {
+            const res = await fetch('/api-token-auth/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),
             });
-
-            const data = await response.json();
-
-            if (response.ok) {
+            const data = await res.json();
+            if (res.ok) {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('isAuthenticated', 'true');
-                localStorage.setItem('userId', data.user_id); // PK
-                localStorage.setItem('employeeId', data.username); // User ID / Employee ID
+                localStorage.setItem('userId', data.user_id);
+                localStorage.setItem('employeeId', data.username);
                 localStorage.setItem('isAdmin', data.is_staff);
-
-                const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Doctor';
-                localStorage.setItem('userFullName', fullName);
-                localStorage.setItem('userName', fullName); // Keeping legacy support if any component uses userName for display name
-
+                const full = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Doctor';
+                localStorage.setItem('userFullName', full);
+                localStorage.setItem('userName', full);
                 navigate('/dashboard');
             } else {
-                setError(data.non_field_errors ? data.non_field_errors[0] : 'Invalid credentials');
+                setError(data.non_field_errors ? data.non_field_errors[0] : 'Invalid credentials. Please try again.');
             }
         } catch (err) {
             setError('Failed to connect to server. Please try again.');
-            console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex bg-slate-50 font-sans">
-            {/* Left Side - Image */}
-            <div className="hidden lg:flex lg:w-1/2 relative bg-gray-900 overflow-hidden">
+        <div className="min-h-screen flex" style={{ background: '#f1f5f9' }}>
+
+            {/* ── Left Panel — Slate ──────────────────────────────────── */}
+            <div
+                className="hidden lg:flex lg:w-5/12 relative overflow-hidden flex-col justify-between"
+                style={{ background: '#1e293b' }}
+            >
+                {/* Background medical image */}
                 <img
                     src="/image/medical_login_bg.png"
-                    alt="Radiology Department"
-                    className="absolute inset-0 w-full h-full object-cover scale-105 transition-transform duration-[20s] hover:scale-110"
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 w-full h-full object-cover"
+                    style={{ opacity: 0.6, mixBlendMode: 'luminosity' }}
                 />
-                <div className="relative z-10 flex flex-col justify-center px-16 text-white h-full bg-gradient-to-r from-teal-900/90 to-blue-900/50">
-                    <div className="mb-8">
-                        <img src="/image/kims_logo.png" alt="KIMS Logo" className="w-[200px] bg-white_90 p-3 rounded-xl bg-white/90 shadow-lg backdrop-blur-sm" />
+                {/* Dark overlay gradient for readability */}
+                <div
+                    className="absolute inset-0"
+                    style={{ background: 'linear-gradient(135deg, rgba(15,23,42,0.55) 0%, rgba(30,41,59,0.45) 100%)' }}
+                />
+                {/* Subtle dot grid */}
+                <div className="absolute inset-0 dot-grid" style={{ opacity: 0.3 }} />
+
+                {/* Glow orbs */}
+                <div className="absolute rounded-full" style={{
+                    width: '500px', height: '500px', top: '-20%', left: '-20%',
+                    background: 'radial-gradient(circle, rgba(71,85,105,0.3) 0%, transparent 70%)',
+                    animation: 'blob 14s ease-in-out infinite',
+                }} />
+                <div className="absolute rounded-full animation-delay-4000" style={{
+                    width: '400px', height: '400px', bottom: '-15%', right: '-10%',
+                    background: 'radial-gradient(circle, rgba(100,116,139,0.2) 0%, transparent 70%)',
+                    animation: 'blob 16s ease-in-out infinite',
+                }} />
+
+                {/* Content */}
+                <div className="relative z-10 flex flex-col h-full justify-center px-12">
+                    {/* Logo */}
+                    <div className="mb-10">
+                        <img
+                            src="/image/kims_logo.png"
+                            alt="KIMS Logo"
+                            className="w-[160px] p-3 rounded-xl"
+                            style={{ background: 'rgba(255,255,255,0.9)' }}
+                        />
                     </div>
-                    <h1 className="text-5xl font-extrabold mb-6 leading-tight tracking-tight">
-                        Old Radiology <br /> <span className="text-teal-300">Reporting System</span>
+
+                    {/* Badge */}
+                    <span
+                        className="inline-flex items-center self-start px-3 py-1 rounded-full text-xs font-bold mb-5 uppercase tracking-widest"
+                        style={{ background: 'rgba(148,163,184,0.12)', border: '1px solid rgba(148,163,184,0.2)', color: '#94a3b8' }}
+                    >
+                        Radiology Information System
+                    </span>
+
+                    <h1 className="text-4xl font-extrabold text-white mb-4 leading-tight">
+                        Old Radiology<br />
+                        <span style={{ color: '#64748b' }}>Reporting Portal</span>
                     </h1>
-                    <p className="text-lg text-teal-50 max-w-lg leading-relaxed opacity-90">
-                        Secure, high-speed access to patient diagnostic reports.
-                        Designed for modern healthcare professionals.
+                    <p className="text-sm leading-relaxed mb-8" style={{ color: '#475569', maxWidth: '320px' }}>
+                        Secure access to archived radiology reports for authorized KIMS clinical staff.
+                    </p>
+
+                    {/* Feature pills */}
+                    <div className="flex flex-col gap-3">
+                        {[
+                            { icon: '🔒', text: 'Token-based secure authentication' },
+                            { icon: '⚡', text: 'Fast patient record search & filter' },
+                            { icon: '📄', text: 'Direct PDF report viewing & download' },
+                        ].map(({ icon, text }) => (
+                            <div key={text} className="flex items-center gap-3">
+                                <span className="text-lg">{icon}</span>
+                                <span className="text-xs font-medium" style={{ color: '#64748b' }}>{text}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Bottom bar */}
+                <div className="relative z-10 px-12 py-5" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <p className="text-xs" style={{ color: '#334155' }}>
+                        © 2026 KIMS ICT Cell — For authorized use only
                     </p>
                 </div>
             </div>
 
-            {/* Right Side - Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative">
-                {/* Decorative background elements */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-teal-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+            {/* ── Right Panel — Form ──────────────────────────────────── */}
+            <div className="flex-1 flex items-center justify-center p-6" style={{ background: '#f1f5f9' }}>
+                <div className="w-full max-w-[400px]" style={{ animation: 'fadeIn 0.5s ease-out' }}>
 
-                <div className="w-full max-w-[420px] relative z-10">
-                    <div className="text-center mb-10">
-                        <h2 className="text-4xl font-bold text-gray-900 mb-3 tracking-tight">Welcome Back</h2>
-                        <p className="text-gray-500 text-lg">Please enter your details to sign in</p>
+                    {/* Mobile logo */}
+                    <div className="flex justify-center mb-8 lg:hidden">
+                        <img src="/image/kims_logo.png" alt="KIMS" className="w-[120px] rounded-lg bg-white p-2 shadow" />
                     </div>
 
-                    <form onSubmit={handleLogin} className="space-y-6">
-                        {error && (
-                            <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium text-center animate-pulse">
-                                {error}
-                            </div>
-                        )}
+                    {/* Card */}
+                    <div
+                        className="rounded-2xl overflow-hidden"
+                        style={{
+                            background: '#ffffff',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)',
+                        }}
+                    >
+                        {/* Card top accent bar */}
+                        <div style={{ height: '4px', background: 'linear-gradient(90deg, #1e293b, #475569, #94a3b8)' }} />
 
-                        <div className="group">
-                            <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Username / ID</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-teal-600 transition-colors">
-                                    <User size={20} />
+                        <div className="p-8">
+                            {/* Heading */}
+                            <div className="mb-7">
+                                <h2 className="text-2xl font-extrabold mb-1" style={{ color: '#0f172a' }}>
+                                    Sign In
+                                </h2>
+                                <p className="text-sm" style={{ color: '#94a3b8' }}>
+                                    Enter your credentials to access patient reports.
+                                </p>
+                            </div>
+
+                            {/* Error */}
+                            {error && (
+                                <div
+                                    className="flex items-center gap-2.5 p-3 rounded-xl mb-5 text-sm"
+                                    style={{
+                                        background: '#fef2f2',
+                                        border: '1px solid #fecaca',
+                                        color: '#ef4444',
+                                        animation: 'slideUp 0.25s ease-out',
+                                    }}
+                                >
+                                    <AlertCircle size={15} className="shrink-0" />
+                                    {error}
                                 </div>
-                                <input
-                                    type="text"
-                                    name="username"
-                                    value={formData.username}
-                                    onChange={handleChange}
-                                    className="w-full pl-12 pr-4 py-4 rounded-xl bg-white border-2 border-gray-100 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all duration-200 font-medium shadow-sm"
-                                    placeholder="Enter your Username"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div className="group">
-                            <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Password</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-teal-600 transition-colors">
-                                    <Lock size={20} />
-                                </div>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    className="w-full pl-12 pr-4 py-4 rounded-xl bg-white border-2 border-gray-100 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all duration-200 font-medium shadow-sm"
-                                    placeholder="••••••••"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className={`w-full py-4 bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold rounded-xl shadow-lg hover:shadow-teal-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 group ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
-                            {loading ? (
-                                <span>Signing In...</span>
-                            ) : (
-                                <>
-                                    <span>Sign In</span>
-                                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                                </>
                             )}
-                        </button>
-                    </form>
 
-                    <div className="mt-10 text-center">
-                        <p className="text-gray-500 font-medium text-sm">
-                            Need help? Contact system administrator.
-                        </p>
+                            <form onSubmit={handleLogin} className="space-y-5">
+
+                                {/* Username */}
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#64748b' }}>
+                                        Username / Employee ID
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none" style={{ left: '0.875rem', color: '#94a3b8' }}>
+                                            <User size={16} />
+                                        </div>
+                                        <input
+                                            type="text" name="username"
+                                            value={formData.username} onChange={handleChange}
+                                            placeholder="Enter username"
+                                            required
+                                            className="input-slate"
+                                            style={{ paddingLeft: '2.75rem' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Password */}
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#64748b' }}>
+                                        Password
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none" style={{ left: '0.875rem', color: '#94a3b8' }}>
+                                            <Lock size={16} />
+                                        </div>
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            name="password"
+                                            value={formData.password} onChange={handleChange}
+                                            placeholder="••••••••"
+                                            required
+                                            className="input-slate"
+                                            style={{ paddingLeft: '2.75rem', paddingRight: '3rem' }}
+                                        />
+                                        <button
+                                            type="button"
+                                            tabIndex={-1}
+                                            onClick={() => setShowPassword(p => !p)}
+                                            className="absolute inset-y-0 right-0 flex items-center px-3 transition-colors duration-150"
+                                            style={{ color: showPassword ? '#475569' : '#cbd5e1' }}
+                                        >
+                                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Submit */}
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="btn-slate w-full justify-center gap-2.5 mt-1"
+                                    style={{ padding: '0.8rem 1.25rem', fontSize: '0.9375rem' }}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                            </svg>
+                                            Authenticating...
+                                        </>
+                                    ) : (
+                                        <>Sign In <ArrowRight size={17} /></>
+                                    )}
+                                </button>
+                            </form>
+
+                            <p className="mt-6 text-center text-xs" style={{ color: '#cbd5e1' }}>
+                                Need access? Contact the{' '}
+                                <span style={{ color: '#475569', fontWeight: 600 }}>KIMS ICT helpdesk</span>.
+                            </p>
+                        </div>
                     </div>
+
+                    <p className="text-center mt-5 text-xs" style={{ color: '#cbd5e1' }}>
+                        © 2026 KIMS ICT Cell — Authorized personnel only
+                    </p>
                 </div>
             </div>
         </div>

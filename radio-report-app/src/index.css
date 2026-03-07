@@ -1,8 +1,252 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+/* ── Base ────────────────────────────────────────────────────────────────── */
 @layer base {
   body {
-    @apply bg-brand-bg font-sans flex flex-col min-h-screen text-slate-800;
+    background-color: #f1f5f9;
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    color: #1e293b;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+  }
+}
+
+/* ── Utilities ────────────────────────────────────────────────────────────── */
+@layer utilities {
+
+  /* Main card */
+  .card-slate {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+    border-radius: 1rem;
+  }
+
+  /* Input — slate pro */
+  .input-slate {
+    width: 100%;
+    padding: 0.6rem 0.875rem;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    color: #1e293b;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-size: 0.875rem;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .input-slate::placeholder {
+    color: #94a3b8;
+  }
+
+  .input-slate:focus {
+    border-color: #475569;
+    box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.12);
+  }
+
+  .input-slate:disabled {
+    background: #f8fafc;
+    color: #cbd5e1;
+    cursor: not-allowed;
+    border-color: #f1f5f9;
+  }
+
+  /* Skeleton shimmer — light */
+  .skeleton {
+    background: linear-gradient(90deg,
+        #e2e8f0 25%,
+        #f1f5f9 50%,
+        #e2e8f0 75%);
+    background-size: 1000px 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 0.375rem;
+  }
+
+  /* Primary button — slate */
+  .btn-slate {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #ffffff;
+    background: #334155;
+    border: none;
+    box-shadow: 0 2px 6px rgba(51, 65, 85, 0.25);
+    transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .btn-slate:hover {
+    background: #1e293b;
+    box-shadow: 0 4px 14px rgba(30, 41, 59, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .btn-slate:active {
+    transform: translateY(0);
+  }
+
+  .btn-slate:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Ghost button */
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #475569;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .btn-outline:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #1e293b;
+  }
+
+  /* Aurora bg (login left panel) */
+  .aurora-bg {
+    background: linear-gradient(-45deg, #1e293b, #0f2444, #1a3050, #0f172a, #1e293b);
+    background-size: 400% 400%;
+    animation: aurora 12s ease infinite;
+  }
+
+  /* Dot grid */
+  .dot-grid {
+    background-image: radial-gradient(rgba(148, 163, 184, 0.25) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+}
+
+/* ── Keyframes ──────────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes aurora {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -40px) scale(1.08);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.94);
+  }
+
+  100% {
+    transform: translate(0, 0) scale(1);
   }
 }
