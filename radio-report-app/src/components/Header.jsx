@@ -36,22 +36,33 @@ export default function Header() {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                 }}
             >
-                <div className="max-w-screen-xl mx-auto px-5 h-14 flex items-center justify-between">
+                <div className="w-full h-14 flex items-center justify-end px-4 relative">
 
-                    {/* Left — Logo + App name */}
-                    <div className="flex items-center gap-3">
+                    {/* Top-left corner logo */}
+                    <div
+                        className="absolute top-0 left-0 h-14 flex items-center pl-2 cursor-pointer"
+                        onClick={() => navigate('/dashboard')}
+                        title="Go to Dashboard"
+                        style={{ transition: 'opacity 0.2s' }}
+                        onMouseEnter={e => {
+                            e.currentTarget.querySelector('img').style.transform = 'scale(1.07)';
+                            e.currentTarget.querySelector('img').style.boxShadow = '0 0 14px rgba(255,255,255,0.25)';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.querySelector('img').style.transform = 'scale(1)';
+                            e.currentTarget.querySelector('img').style.boxShadow = 'none';
+                        }}
+                    >
                         <img
                             src="/image/kims_logo.png"
                             alt="KIMS"
-                            className="h-8 w-auto rounded"
-                            style={{ background: 'rgba(255,255,255,0.9)', padding: '2px 6px' }}
+                            className="h-9 w-auto rounded"
+                            style={{
+                                background: 'rgba(255,255,255,0.9)',
+                                padding: '2px 6px',
+                                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                            }}
                         />
-                        <div className="hidden sm:block">
-                            <p className="text-xs font-bold text-white leading-none tracking-wide">KIMS ICT</p>
-                            <p className="text-xs font-medium leading-none mt-0.5" style={{ color: '#94a3b8' }}>
-                                Old Radiology Reports
-                            </p>
-                        </div>
                     </div>
 
                     {/* Right — Admin + User dropdown */}
@@ -66,9 +77,22 @@ export default function Header() {
                                     background: 'rgba(139,92,246,0.15)',
                                     border: '1px solid rgba(139,92,246,0.3)',
                                     color: '#c4b5fd',
+                                    transition: 'all 0.2s ease',
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(139,92,246,0.25)'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(139,92,246,0.15)'}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.background = 'rgba(139,92,246,0.32)';
+                                    e.currentTarget.style.border = '1px solid rgba(139,92,246,0.6)';
+                                    e.currentTarget.style.color = '#ede9fe';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(139,92,246,0.3)';
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.background = 'rgba(139,92,246,0.15)';
+                                    e.currentTarget.style.border = '1px solid rgba(139,92,246,0.3)';
+                                    e.currentTarget.style.color = '#c4b5fd';
+                                    e.currentTarget.style.transform = 'none';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
                             >
                                 <Shield size={13} /> Admin Panel
                             </button>
@@ -80,16 +104,35 @@ export default function Header() {
                                 onClick={() => setDropdownOpen(p => !p)}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200"
                                 style={{
-                                    background: dropdownOpen ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    background: dropdownOpen ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
+                                    border: dropdownOpen ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(255,255,255,0.1)',
+                                    transition: 'all 0.2s ease',
                                 }}
-                                onMouseEnter={e => { if (!dropdownOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; }}
-                                onMouseLeave={e => { if (!dropdownOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                                onMouseEnter={e => {
+                                    if (!dropdownOpen) {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.13)';
+                                        e.currentTarget.style.border = '1px solid rgba(255,255,255,0.2)';
+                                        e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.25)';
+                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                        const avatar = e.currentTarget.querySelector('.user-avatar');
+                                        if (avatar) avatar.style.background = '#64748b';
+                                    }
+                                }}
+                                onMouseLeave={e => {
+                                    if (!dropdownOpen) {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                                        e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                        e.currentTarget.style.transform = 'none';
+                                        const avatar = e.currentTarget.querySelector('.user-avatar');
+                                        if (avatar) avatar.style.background = '#475569';
+                                    }
+                                }}
                             >
                                 {/* Avatar */}
                                 <div
-                                    className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
-                                    style={{ background: '#475569', color: '#f1f5f9' }}
+                                    className="user-avatar w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
+                                    style={{ background: '#475569', color: '#f1f5f9', transition: 'background 0.2s' }}
                                 >
                                     {initials}
                                 </div>
@@ -167,7 +210,7 @@ export default function Header() {
                     borderBottom: '1px solid #fde68a',
                 }}
             >
-                <div className="max-w-screen-xl mx-auto px-5 py-1.5 flex items-center gap-2">
+                <div className="px-5 py-1.5 flex items-center justify-center gap-2">
                     <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
                     <p className="text-xs font-medium" style={{ color: '#92400e' }}>
                         This system is for authorized KIMS personnel only. All access is logged and monitored.
