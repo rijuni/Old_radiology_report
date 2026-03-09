@@ -27,7 +27,7 @@ export default function Header() {
     }, []);
 
     return (
-        <header>
+        <header className="sticky top-0 z-50 w-full shadow-sm">
             {/* ── Main Nav ──────────────────────────────────────────────── */}
             <nav
                 style={{

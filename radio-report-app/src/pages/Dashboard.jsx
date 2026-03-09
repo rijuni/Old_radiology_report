@@ -3,7 +3,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useNavigate } from 'react-router-dom';
 import {
-    Search, RotateCcw, Eye, Download,
+    Search, RotateCcw, Eye,
     ChevronLeft, ChevronRight, AlertTriangle,
     ChevronDown, ChevronUp,
     Database, CheckCircle2, Clock, FilePlus,
@@ -71,7 +71,7 @@ function TypeBadge({ type }) {
 function StatCard({ icon: Icon, label, value, accent, primary }) {
     return (
         <div
-            className="flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
             style={{
                 background: primary ? '#1e293b' : '#ffffff',
                 border: primary ? 'none' : '1px solid #e2e8f0',
@@ -137,7 +137,8 @@ export default function Dashboard() {
     const [filtersExpanded, setFiltersExpanded] = useState(true);
     const [error, setError] = useState('');
     const [jumpPage, setJumpPage] = useState('');
-    const [statusCounts, setStatusCounts] = useState({ final: 0, draft: 0, newR: 0 });
+    const [reportError, setReportError] = useState({});   // { [rowIdx]: message }
+    const [statusCounts, setStatusCounts] = useState({ final: 0, draft: 0, newR: 0, displayTotal: 0 });
     const [searchParams, setSearchParams] = useState({
         name: '', id: '', modality: '', study: '',
         serviceStatus: '', patientType: '', radiologist: '',
@@ -192,24 +193,42 @@ export default function Dashboard() {
                 } catch { return 0; }
             };
 
-            // Fire main fetch + 3 status-count fetches in parallel
-            const [res, finalCount, draftCount, newCount] = await Promise.all([
-                fetch(`/api/patients/?${query.toString()}`, {
-                    headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' }
-                }),
-                fetchStatusCount('2'),  // Final
-                fetchStatusCount('1'),  // Draft
-                fetchStatusCount('0'),  // New
-            ]);
+            const res = await fetch(`/api/patients/?${query.toString()}`, {
+                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' }
+            });
 
             if (res.status === 401) { localStorage.clear(); navigate('/login'); return; }
             if (!res.ok) throw new Error('fetch failed');
+
             const data = await res.json();
-            setPatients(data.results || []);
-            setTotalCount(data.count || 0);
+            const results = data.results || [];
+
+            let fCount = 0, dCount = 0, nCount = 0, dTotal = 0;
+
+            // If date range is practically empty/reset, show DB-wide totals in the cards
+            if (!filters.fromDate && !filters.toDate) {
+                const [finalCount, draftCount, newCount] = await Promise.all([
+                    fetchStatusCount('2'),
+                    fetchStatusCount('1'),
+                    fetchStatusCount('0')
+                ]);
+                fCount = finalCount;
+                dCount = draftCount;
+                nCount = newCount;
+                dTotal = data.count || 0;
+            } else {
+                // Otherwise, show stats ONLY for the current 15 items on this page
+                fCount = results.filter(r => ['2', '3', 'Final'].includes(r.service_status)).length;
+                dCount = results.filter(r => ['1', 'Draft'].includes(r.service_status)).length;
+                nCount = results.filter(r => ['0', 'New'].includes(r.service_status)).length;
+                dTotal = results.length;
+            }
+
+            setPatients(results);
+            setTotalCount(data.count || 0); // Raw DB total for pagination to work
             setTotalPages(Math.ceil((data.count || 0) / 15));
             setCurrentPage(page);
-            setStatusCounts({ final: finalCount, draft: draftCount, newR: newCount });
+            setStatusCounts({ final: fCount, draft: dCount, newR: nCount, displayTotal: dTotal });
         } catch (err) {
             console.error(err);
             setError('Error fetching patients. Please try again.');
@@ -251,6 +270,36 @@ export default function Dashboard() {
         return true;
     };
 
+    // ── View Report (with 404 guard) ──────────────────────────────────────────
+    const handleViewReport = async (url, rowIdx, download = false) => {
+        try {
+            const res = await fetch(url, { method: 'HEAD' });
+            if (res.status === 404) {
+                setReportError(prev => ({ ...prev, [rowIdx]: 'No Report Available' }));
+                setTimeout(() => setReportError(prev => { const n = { ...prev }; delete n[rowIdx]; return n; }), 4000);
+                return;
+            }
+            if (!res.ok) {
+                setReportError(prev => ({ ...prev, [rowIdx]: 'Report Unavailable' }));
+                setTimeout(() => setReportError(prev => { const n = { ...prev }; delete n[rowIdx]; return n; }), 4000);
+                return;
+            }
+        } catch {
+            setReportError(prev => ({ ...prev, [rowIdx]: 'Report Unavailable' }));
+            setTimeout(() => setReportError(prev => { const n = { ...prev }; delete n[rowIdx]; return n; }), 4000);
+            return;
+        }
+        // File confirmed — open it
+        if (download) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `report.pdf`;
+            a.click();
+        } else {
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
+    };
+
     const handleSearch = () => { if (validateSearch()) fetchPatients(searchParams, 1); };
     const handleReset = () => {
         const today = new Date().toISOString().split('T')[0];
@@ -263,7 +312,7 @@ export default function Dashboard() {
     //   - total  → totalCount returned by DRF (count of all matching records)
     //   - others → per-status counts fetched in parallel alongside the main request
     const stats = {
-        total: totalCount,
+        total: statusCounts.displayTotal || 0,
         final: statusCounts.final,
         draft: statusCounts.draft,
         newR: statusCounts.newR,
@@ -275,15 +324,20 @@ export default function Dashboard() {
         <div className="flex flex-col min-h-screen" style={{ background: '#f1f5f9' }}>
             <Header />
 
-            <main className="flex-1 pb-16 px-4 md:px-6 pt-5" style={{ animation: 'fadeIn 0.4s ease-out' }}>
+            <main className="flex-1 pb-8 px-3 md:px-5 pt-3" style={{ animation: 'fadeIn 0.4s ease-out' }}>
 
                 {/* ── Stats Row ────────────────────────────────────────── */}
                 {!loading && patients.length > 0 && (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5" style={{ animation: 'slideUp 0.35s ease-out' }}>
-                        <StatCard icon={Database} label="Total" value={stats.total} accent="#334155" primary />
-                        <StatCard icon={CheckCircle2} label="Final" value={stats.final} accent="#16a34a" />
-                        <StatCard icon={Clock} label="Draft" value={stats.draft} accent="#ca8a04" />
-                        <StatCard icon={FilePlus} label="New" value={stats.newR} accent="#2563eb" />
+                    <div
+                        className="sticky z-40 pt-1 pb-3 -mt-1"
+                        style={{ top: '86px', background: '#f1f5f9', animation: 'slideUp 0.35s ease-out' }}
+                    >
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                            <StatCard icon={Database} label="Total" value={stats.total} accent="#334155" />
+                            <StatCard icon={CheckCircle2} label="Final" value={stats.final} accent="#16a34a" />
+                            <StatCard icon={Clock} label="Draft" value={stats.draft} accent="#ca8a04" />
+                            <StatCard icon={FilePlus} label="New" value={stats.newR} accent="#2563eb" />
+                        </div>
                     </div>
                 )}
 
@@ -292,7 +346,7 @@ export default function Dashboard() {
 
                     {/* Filter Panel Toggle */}
                     <div
-                        className="flex items-center justify-between px-5 py-3 cursor-pointer select-none"
+                        className="flex items-center justify-between px-4 py-2 cursor-pointer select-none"
                         style={{
                             background: '#f8fafc',
                             borderBottom: filtersExpanded ? '1px solid #e2e8f0' : 'none',
@@ -320,10 +374,10 @@ export default function Dashboard() {
                     {/* Filter Body */}
                     {filtersExpanded && (
                         <div
-                            className="p-5"
+                            className="p-3"
                             style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', animation: 'slideUp 0.2s ease-out' }}
                         >
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mb-3">
                                 <FilterInput label="Patient Name" type="text" name="name" value={searchParams.name} onChange={handleChange} placeholder="Patient Name" />
                                 <FilterInput label="Patient ID" required type="text" name="id" value={searchParams.id} onChange={handleChange} placeholder="Enter MRN" />
                                 <FilterSelect label="Modality" name="modality" value={searchParams.modality} onChange={handleChange}>
@@ -333,7 +387,7 @@ export default function Dashboard() {
                                 <FilterInput label="Study" type="text" name="study" value={searchParams.study} onChange={handleChange} placeholder="Study Description" />
                                 <FilterInput label="Accession No" type="text" name="accessionNo" value={searchParams.accessionNo} onChange={handleChange} placeholder="Accession No" />
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                                 <FilterSelect label="Service Status" name="serviceStatus" value={searchParams.serviceStatus} onChange={handleChange}>
                                     <option value="">All Statuses</option>
                                     <option value="New">New</option>
@@ -352,7 +406,7 @@ export default function Dashboard() {
                                 <FilterInput label="To Date" required type="date" name="toDate" value={searchParams.toDate} min={searchParams.fromDate} max={today} onChange={handleChange} />
                             </div>
 
-                            <div className="flex items-center gap-3 mt-5 flex-wrap">
+                            <div className="flex items-center gap-2 mt-3 flex-wrap">
                                 <button
                                     onClick={handleSearch}
                                     className="btn-slate flex items-center gap-2"
@@ -380,7 +434,7 @@ export default function Dashboard() {
                     {/* Results info strip */}
                     {!loading && patients.length > 0 && (
                         <div
-                            className="px-5 py-2 flex items-center gap-1.5 text-xs"
+                            className="px-4 py-1.5 flex items-center gap-1.5 text-xs"
                             style={{ borderBottom: '1px solid #f1f5f9', color: '#94a3b8', background: '#fff' }}
                         >
                             Showing page <span className="font-bold text-slate-600 mx-0.5">{currentPage}</span> of
@@ -397,8 +451,8 @@ export default function Dashboard() {
                                     {TH.map(th => (
                                         <th
                                             key={th}
-                                            className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
-                                            style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}
+                                            className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider"
+                                            style={{ color: '#ffffff', whiteSpace: 'nowrap' }}
                                         >
                                             {th}
                                         </th>
@@ -421,23 +475,23 @@ export default function Dashboard() {
                                             onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f8fafc'; }}
                                         >
                                             {/* Sl No */}
-                                            <td className="px-4 py-3 text-xs font-medium" style={{ color: '#cbd5e1' }}>
+                                            <td className="px-3 py-1.5 text-xs font-medium" style={{ color: '#cbd5e1' }}>
                                                 {(currentPage - 1) * 15 + idx + 1}
                                             </td>
                                             {/* MRN */}
-                                            <td className="px-4 py-3 font-mono text-xs font-bold" style={{ color: '#2563eb' }}>
+                                            <td className="px-3 py-1.5 font-mono text-xs font-bold" style={{ color: '#2563eb' }}>
                                                 {row.mrn}
                                             </td>
                                             {/* Name */}
-                                            <td className="px-4 py-3 font-semibold text-sm" style={{ color: '#1e293b' }}>
+                                            <td className="px-3 py-1.5 font-semibold text-sm" style={{ color: '#1e293b' }}>
                                                 {row.name}
                                             </td>
                                             {/* Study */}
-                                            <td className="px-4 py-3 text-xs" style={{ color: '#64748b', maxWidth: '220px' }}>
+                                            <td className="px-3 py-1.5 text-xs" style={{ color: '#64748b', maxWidth: '220px' }}>
                                                 {row.study_description}
                                             </td>
                                             {/* Modality */}
-                                            <td className="px-4 py-3 text-center">
+                                            <td className="px-3 py-1.5 text-center">
                                                 <span
                                                     className="px-2 py-1 rounded font-mono text-xs font-bold"
                                                     style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569' }}
@@ -446,41 +500,41 @@ export default function Dashboard() {
                                                 </span>
                                             </td>
                                             {/* Patient Type */}
-                                            <td className="px-4 py-3 text-center">
+                                            <td className="px-3 py-1.5 text-center">
                                                 <TypeBadge type={row.patient_type} />
                                             </td>
                                             {/* Date */}
-                                            <td className="px-4 py-3 text-center text-xs font-medium" style={{ color: '#94a3b8' }}>
+                                            <td className="px-3 py-1.5 text-center text-xs font-medium" style={{ color: '#94a3b8' }}>
                                                 {row.exam_date}
                                             </td>
                                             {/* Status */}
-                                            <td className="px-4 py-3 text-center">
+                                            <td className="px-3 py-1.5 text-center">
                                                 <StatusBadge status={row.service_status} />
                                             </td>
                                             {/* Action */}
-                                            <td className="px-4 py-3">
+                                            <td className="px-3 py-1.5">
                                                 {row.report_path ? (
-                                                    <div className="flex items-center gap-2 justify-center">
-                                                        <a
-                                                            href={`/api/reports/view/?path=${encodeURIComponent(row.report_path)}&token=${localStorage.getItem('token')}`}
-                                                            target="_blank" rel="noopener noreferrer"
+                                                    <div className="flex flex-col items-center gap-1.5">
+                                                        <button
+                                                            onClick={() => handleViewReport(
+                                                                `/api/reports/view/?path=${encodeURIComponent(row.report_path)}&token=${localStorage.getItem('token')}`,
+                                                                idx
+                                                            )}
                                                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all duration-150"
-                                                            style={{ background: '#2563eb', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' }}
+                                                            style={{ background: '#2563eb', boxShadow: '0 2px 6px rgba(37,99,235,0.3)', border: 'none', cursor: 'pointer' }}
                                                             onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
                                                             onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
                                                         >
-                                                            <Eye size={12} /> View
-                                                        </a>
-                                                        <a
-                                                            href={`/api/reports/view/?path=${encodeURIComponent(row.report_path)}&token=${localStorage.getItem('token')}`}
-                                                            download={`report_${row.mrn}.pdf`}
-                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
-                                                            style={{ background: '#f1f5f9', border: '1.5px solid #e2e8f0', color: '#475569' }}
-                                                            onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
-                                                            onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; }}
-                                                        >
-                                                            <Download size={12} /> PDF
-                                                        </a>
+                                                            <Eye size={12} /> View Report
+                                                        </button>
+                                                        {reportError[idx] && (
+                                                            <span
+                                                                className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold"
+                                                                style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', animation: 'slideUp 0.2s ease-out', whiteSpace: 'nowrap' }}
+                                                            >
+                                                                <AlertTriangle size={10} /> {reportError[idx]}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 ) : (
                                                     <span className="text-xs italic" style={{ color: '#cbd5e1' }}>No Report</span>
