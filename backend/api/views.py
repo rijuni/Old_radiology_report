@@ -35,10 +35,11 @@ class PatientViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         
-        # Custom filtering for name, id(mrn), accessionNo
+        # Custom filtering for name, id(mrn), accessionNo, study, dates
         name = self.request.query_params.get('name')
-        mrn = self.request.query_params.get('id') # Frontend sends 'id' for MRN
+        mrn = self.request.query_params.get('id')  # Frontend sends 'id' for MRN
         accession_no = self.request.query_params.get('accessionNo')
+        study = self.request.query_params.get('study')  # Study Description
         from_date = self.request.query_params.get('fromDate')
         to_date = self.request.query_params.get('toDate')
 
@@ -48,6 +49,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(mrn__icontains=mrn)
         if accession_no:
             queryset = queryset.filter(accession_no__icontains=accession_no)
+        if study:
+            queryset = queryset.filter(study_description__icontains=study)
         
         if from_date:
             queryset = queryset.filter(exam_date__gte=from_date)

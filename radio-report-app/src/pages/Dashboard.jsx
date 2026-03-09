@@ -136,6 +136,8 @@ export default function Dashboard() {
     const [totalCount, setTotalCount] = useState(0);
     const [filtersExpanded, setFiltersExpanded] = useState(true);
     const [error, setError] = useState('');
+    const [jumpPage, setJumpPage] = useState('');
+    const [statusCounts, setStatusCounts] = useState({ final: 0, draft: 0, newR: 0 });
     const [searchParams, setSearchParams] = useState({
         name: '', id: '', modality: '', study: '',
         serviceStatus: '', patientType: '', radiologist: '',
@@ -154,29 +156,60 @@ export default function Dashboard() {
             const token = localStorage.getItem('token');
             const query = new URLSearchParams();
             query.append('page', page);
-            if (filters.id) {
-                query.append('id', filters.id);
-            } else {
-                Object.entries(filters).forEach(([key, value]) => {
-                    if (value && key !== 'id') {
-                        if (key === 'serviceStatus') {
-                            const map = { 'New': '0', 'Draft': '1', 'Final': '2' };
-                            query.append('service_status', map[value] || value);
-                        } else if (key === 'patientType') query.append('patient_type', value);
-                        else query.append(key, value);
-                    }
-                });
+            query.append('page_size', 15);
+
+            // Always include all non-blank fields using && (AND) logic:
+            // Patient ID, Modality, Study, Patient Type, Service Status + date range
+            if (filters.id) query.append('id', filters.id);
+            if (filters.modality) query.append('modality', filters.modality);
+            if (filters.study) query.append('study', filters.study);
+            if (filters.patientType) query.append('patient_type', filters.patientType);
+            if (filters.serviceStatus) {
+                const map = { 'New': '0', 'Draft': '1', 'Final': '2' };
+                query.append('service_status', map[filters.serviceStatus] || filters.serviceStatus);
             }
-            const res = await fetch(`/api/patients/?${query.toString()}`, {
-                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' }
-            });
+            if (filters.name) query.append('name', filters.name);
+            if (filters.accessionNo) query.append('accessionNo', filters.accessionNo);
+            if (filters.fromDate) query.append('fromDate', filters.fromDate);
+            if (filters.toDate) query.append('toDate', filters.toDate);
+
+            // Helper: fetch just the count for a given service_status using the same filters.
+            // page_size=1 means only 1 record is transferred — we only need data.count.
+            const fetchStatusCount = async (statusCode) => {
+                const sq = new URLSearchParams(query);
+                sq.set('page', 1);
+                sq.set('page_size', 1);
+                sq.set('service_status', statusCode);
+                // Remove any existing service_status filter so we get the clean per-status count.
+                // (URLSearchParams.set replaces instead of appending, so this is already correct.)
+                try {
+                    const r = await fetch(`/api/patients/?${sq.toString()}`, {
+                        headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' }
+                    });
+                    if (!r.ok) return 0;
+                    const d = await r.json();
+                    return d.count || 0;
+                } catch { return 0; }
+            };
+
+            // Fire main fetch + 3 status-count fetches in parallel
+            const [res, finalCount, draftCount, newCount] = await Promise.all([
+                fetch(`/api/patients/?${query.toString()}`, {
+                    headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' }
+                }),
+                fetchStatusCount('2'),  // Final
+                fetchStatusCount('1'),  // Draft
+                fetchStatusCount('0'),  // New
+            ]);
+
             if (res.status === 401) { localStorage.clear(); navigate('/login'); return; }
             if (!res.ok) throw new Error('fetch failed');
             const data = await res.json();
             setPatients(data.results || []);
             setTotalCount(data.count || 0);
-            setTotalPages(Math.ceil((data.count || 0) / 100));
+            setTotalPages(Math.ceil((data.count || 0) / 15));
             setCurrentPage(page);
+            setStatusCounts({ final: finalCount, draft: draftCount, newR: newCount });
         } catch (err) {
             console.error(err);
             setError('Error fetching patients. Please try again.');
@@ -200,11 +233,19 @@ export default function Dashboard() {
     };
 
     const validateSearch = () => {
-        if (searchParams.id) return true;
-        if (!searchParams.fromDate || !searchParams.toDate) {
-            setError('Please provide either a Patient ID OR a valid Date Range.'); return false;
+        // Date range is NOT required if any of these key fields are filled
+        const hasKeyFilter = !!(searchParams.id || searchParams.modality ||
+            searchParams.study || searchParams.patientType || searchParams.serviceStatus);
+
+        if (!hasKeyFilter) {
+            // No key filter provided — require date range
+            if (!searchParams.fromDate || !searchParams.toDate) {
+                setError('Please provide at least one of: Patient ID, Modality, Study, Patient Type, Service Status — OR a valid Date Range.');
+                return false;
+            }
         }
-        if (new Date(searchParams.fromDate) > new Date(searchParams.toDate)) {
+        if (searchParams.fromDate && searchParams.toDate &&
+            new Date(searchParams.fromDate) > new Date(searchParams.toDate)) {
             setError('From Date cannot be later than To Date.'); return false;
         }
         return true;
@@ -218,11 +259,14 @@ export default function Dashboard() {
     };
 
     const today = new Date().toISOString().split('T')[0];
+    // Stats are derived from the FULL result set across all pages:
+    //   - total  → totalCount returned by DRF (count of all matching records)
+    //   - others → per-status counts fetched in parallel alongside the main request
     const stats = {
-        total: patients.length,
-        final: patients.filter(p => ['Final', '2', '3'].includes(p.service_status)).length,
-        draft: patients.filter(p => ['Draft', '1'].includes(p.service_status)).length,
-        newR: patients.filter(p => ['New', '0'].includes(p.service_status)).length,
+        total: totalCount,
+        final: statusCounts.final,
+        draft: statusCounts.draft,
+        newR: statusCounts.newR,
     };
 
     const TH = ['Sl No', 'Patient ID', 'Patient Name', 'Study Description', 'Modality', 'Type', 'Date', 'Status', 'Action'];
@@ -236,7 +280,7 @@ export default function Dashboard() {
                 {/* ── Stats Row ────────────────────────────────────────── */}
                 {!loading && patients.length > 0 && (
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5" style={{ animation: 'slideUp 0.35s ease-out' }}>
-                        <StatCard icon={Database} label="Showing" value={stats.total} accent="#334155" primary />
+                        <StatCard icon={Database} label="Total" value={stats.total} accent="#334155" primary />
                         <StatCard icon={CheckCircle2} label="Final" value={stats.final} accent="#16a34a" />
                         <StatCard icon={Clock} label="Draft" value={stats.draft} accent="#ca8a04" />
                         <StatCard icon={FilePlus} label="New" value={stats.newR} accent="#2563eb" />
@@ -378,7 +422,7 @@ export default function Dashboard() {
                                         >
                                             {/* Sl No */}
                                             <td className="px-4 py-3 text-xs font-medium" style={{ color: '#cbd5e1' }}>
-                                                {(currentPage - 1) * 100 + idx + 1}
+                                                {(currentPage - 1) * 15 + idx + 1}
                                             </td>
                                             {/* MRN */}
                                             <td className="px-4 py-3 font-mono text-xs font-bold" style={{ color: '#2563eb' }}>
@@ -463,35 +507,170 @@ export default function Dashboard() {
                     </div>
 
                     {/* ── Pagination ──────────────────────────────────────── */}
-                    {totalPages > 1 && (
-                        <div
-                            className="flex justify-between items-center px-5 py-3"
-                            style={{ borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}
-                        >
-                            <span className="text-xs font-medium" style={{ color: '#94a3b8' }}>
-                                Page <span className="font-bold text-slate-600">{currentPage}</span> of{' '}
-                                <span className="font-bold text-slate-600">{totalPages}</span>
-                            </span>
-                            <div className="flex gap-2">
-                                {[
-                                    { label: 'Previous', Icon: ChevronLeft, disabled: currentPage === 1, dir: -1 },
-                                    { label: 'Next', Icon: ChevronRight, disabled: currentPage === totalPages, dir: 1 },
-                                ].map(({ label, Icon, disabled, dir }) => (
+                    {totalPages > 1 && (() => {
+                        // Build the window of page numbers to show
+                        const WINDOW = 2; // pages on each side of current
+                        const pages = [];
+                        const start = Math.max(2, currentPage - WINDOW);
+                        const end = Math.min(totalPages - 1, currentPage + WINDOW);
+
+                        pages.push(1);
+                        if (start > 2) pages.push('...');
+                        for (let p = start; p <= end; p++) pages.push(p);
+                        if (end < totalPages - 1) pages.push('...');
+                        if (totalPages > 1) pages.push(totalPages);
+
+                        const handleJump = () => {
+                            const n = parseInt(jumpPage, 10);
+                            if (!isNaN(n) && n >= 1 && n <= totalPages && n !== currentPage) {
+                                fetchPatients(searchParams, n);
+                            }
+                            setJumpPage('');
+                        };
+
+                        return (
+                            <div
+                                style={{
+                                    borderTop: '1px solid #e2e8f0',
+                                    background: '#f8fafc',
+                                    padding: '10px 20px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '12px',
+                                    flexWrap: 'wrap',
+                                }}
+                            >
+                                {/* Left: record / page summary */}
+                                <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                    <span style={{ fontWeight: 700, color: '#1e293b' }}>{totalCount.toLocaleString()}</span> records
+                                    {' · '}
+                                    Page{' '}
+                                    <span style={{ fontWeight: 700, color: '#334155' }}>{currentPage}</span>
+                                    {' / '}
+                                    <span style={{ fontWeight: 700, color: '#334155' }}>{totalPages}</span>
+                                </span>
+
+                                {/* Centre: page number buttons + prev/next */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+
+                                    {/* Previous */}
                                     <button
-                                        key={label}
-                                        onClick={() => fetchPatients(searchParams, currentPage + dir)}
-                                        disabled={disabled}
-                                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
-                                        style={{ background: '#fff', border: '1.5px solid #e2e8f0', color: '#475569' }}
-                                        onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = '#f1f5f9'; }}
+                                        onClick={() => fetchPatients(searchParams, currentPage - 1)}
+                                        disabled={currentPage === 1 || loading}
+                                        title="Previous page"
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '4px',
+                                            padding: '5px 10px', borderRadius: '7px',
+                                            fontSize: '12px', fontWeight: 700,
+                                            border: '1.5px solid #e2e8f0',
+                                            background: '#fff', color: '#475569',
+                                            cursor: (currentPage === 1 || loading) ? 'not-allowed' : 'pointer',
+                                            opacity: (currentPage === 1 || loading) ? 0.35 : 1,
+                                            transition: 'all 0.15s',
+                                        }}
+                                        onMouseEnter={e => { if (currentPage !== 1 && !loading) e.currentTarget.style.background = '#f1f5f9'; }}
                                         onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
                                     >
-                                        {dir === -1 && <Icon size={14} />}{label}{dir === 1 && <Icon size={14} />}
+                                        <ChevronLeft size={13} /> Prev
                                     </button>
-                                ))}
+
+                                    {/* Page number chips */}
+                                    {pages.map((p, i) =>
+                                        p === '...' ? (
+                                            <span
+                                                key={`ellipsis-${i}`}
+                                                style={{ padding: '5px 6px', fontSize: '12px', color: '#94a3b8', userSelect: 'none' }}
+                                            >…</span>
+                                        ) : (
+                                            <button
+                                                key={p}
+                                                onClick={() => p !== currentPage && fetchPatients(searchParams, p)}
+                                                disabled={loading}
+                                                style={{
+                                                    minWidth: '32px', height: '30px',
+                                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                    borderRadius: '7px',
+                                                    fontSize: '12px', fontWeight: p === currentPage ? 800 : 600,
+                                                    border: p === currentPage ? 'none' : '1.5px solid #e2e8f0',
+                                                    background: p === currentPage ? '#1e293b' : '#fff',
+                                                    color: p === currentPage ? '#fff' : '#475569',
+                                                    cursor: (p === currentPage || loading) ? 'default' : 'pointer',
+                                                    boxShadow: p === currentPage ? '0 2px 8px rgba(30,41,59,0.25)' : 'none',
+                                                    transform: p === currentPage ? 'scale(1.08)' : 'scale(1)',
+                                                    transition: 'all 0.15s',
+                                                }}
+                                                onMouseEnter={e => { if (p !== currentPage && !loading) e.currentTarget.style.background = '#f1f5f9'; }}
+                                                onMouseLeave={e => { if (p !== currentPage) e.currentTarget.style.background = '#fff'; }}
+                                            >
+                                                {p}
+                                            </button>
+                                        )
+                                    )}
+
+                                    {/* Next */}
+                                    <button
+                                        onClick={() => fetchPatients(searchParams, currentPage + 1)}
+                                        disabled={currentPage === totalPages || loading}
+                                        title="Next page"
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '4px',
+                                            padding: '5px 10px', borderRadius: '7px',
+                                            fontSize: '12px', fontWeight: 700,
+                                            border: '1.5px solid #e2e8f0',
+                                            background: '#fff', color: '#475569',
+                                            cursor: (currentPage === totalPages || loading) ? 'not-allowed' : 'pointer',
+                                            opacity: (currentPage === totalPages || loading) ? 0.35 : 1,
+                                            transition: 'all 0.15s',
+                                        }}
+                                        onMouseEnter={e => { if (currentPage !== totalPages && !loading) e.currentTarget.style.background = '#f1f5f9'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+                                    >
+                                        Next <ChevronRight size={13} />
+                                    </button>
+                                </div>
+
+                                {/* Right: Jump-to-page */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500, whiteSpace: 'nowrap' }}>Go to:</span>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={totalPages}
+                                        value={jumpPage}
+                                        onChange={e => setJumpPage(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && handleJump()}
+                                        placeholder="#"
+                                        style={{
+                                            width: '52px', height: '30px',
+                                            border: '1.5px solid #e2e8f0', borderRadius: '7px',
+                                            padding: '0 8px', fontSize: '12px', fontWeight: 600,
+                                            color: '#334155', background: '#fff',
+                                            textAlign: 'center', outline: 'none',
+                                        }}
+                                        onFocus={e => { e.target.style.borderColor = '#334155'; }}
+                                        onBlur={e => { e.target.style.borderColor = '#e2e8f0'; }}
+                                    />
+                                    <button
+                                        onClick={handleJump}
+                                        disabled={loading}
+                                        style={{
+                                            height: '30px', padding: '0 10px',
+                                            borderRadius: '7px', fontSize: '12px', fontWeight: 700,
+                                            background: '#334155', color: '#fff', border: 'none',
+                                            cursor: loading ? 'not-allowed' : 'pointer',
+                                            opacity: loading ? 0.5 : 1,
+                                            transition: 'background 0.15s',
+                                        }}
+                                        onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#1e293b'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = '#334155'; }}
+                                    >
+                                        Go
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
                 </div>
             </main>
 

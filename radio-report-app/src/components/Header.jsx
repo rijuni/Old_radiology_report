@@ -213,7 +213,7 @@ export default function Header() {
                 <div className="px-5 py-1.5 flex items-center justify-center gap-2">
                     <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
                     <p className="text-xs font-medium" style={{ color: '#92400e' }}>
-                        This system is for authorized KIMS personnel only. All access is logged and monitored.
+                        Only Old Radiology Report Available for Viewing (Jan,2022 - March,2025)
                     </p>
                 </div>
             </div>
