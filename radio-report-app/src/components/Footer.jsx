@@ -9,12 +9,12 @@ export default function Footer() {
                 marginTop: 'auto',
             }}
         >
-            <div className="max-w-screen-xl mx-auto px-5 py-3 flex items-center justify-between">
+            <div className="max-w-screen-xl mx-auto px-5 py-3 flex justify-center">
                 <p className="text-xs font-medium" style={{ color: '#64748b' }}>
                     © 2026 KIMS ICT Cell — Old Radiology Reporting System
                 </p>
-                <p className="text-xs font-medium" style={{ color: '#334155' }}>
-                    Authorized use only
+                <p className="text-xs font-medium" style={{ color: '#435164ff' }}>
+                    (Authorized use only)
                 </p>
             </div>
         </footer>
