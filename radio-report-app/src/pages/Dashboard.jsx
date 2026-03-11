@@ -13,7 +13,7 @@ import {
 function SkeletonRow() {
     return (
         <tr>
-            {[...Array(9)].map((_, i) => (
+            {[...Array(8)].map((_, i) => (
                 <td key={i} className="px-4 py-3">
                     <div className="skeleton" style={{ height: '13px', width: i === 2 ? '70%' : i === 3 ? '80%' : '50%', minWidth: '28px' }} />
                 </td>
@@ -45,24 +45,6 @@ function StatusBadge({ status }) {
         >
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.color }} />
             {label}
-        </span>
-    );
-}
-
-// ── Patient Type Badge ────────────────────────────────────────────────────────
-function TypeBadge({ type }) {
-    if (!type) return <span style={{ color: '#cbd5e1', fontSize: '12px' }}>—</span>;
-    const isIP = type === 'IP';
-    return (
-        <span
-            className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold"
-            style={{
-                background: isIP ? '#f3f0ff' : '#ecfdf5',
-                border: `1px solid ${isIP ? '#e9d5ff' : '#a7f3d0'}`,
-                color: isIP ? '#7c3aed' : '#065f46',
-            }}
-        >
-            {isIP ? '🏥 IP' : '🚶 OP'}
         </span>
     );
 }
@@ -141,7 +123,7 @@ export default function Dashboard() {
     const [statusCounts, setStatusCounts] = useState({ final: 0, draft: 0, newR: 0, displayTotal: 0 });
     const [searchParams, setSearchParams] = useState({
         name: '', id: '', modality: '', study: '',
-        serviceStatus: '', patientType: '', radiologist: '',
+        serviceStatus: '', radiologist: '',
         accessionNo: '', fromDate: '', toDate: '',
     });
 
@@ -164,7 +146,6 @@ export default function Dashboard() {
             if (filters.id) query.append('id', filters.id);
             if (filters.modality) query.append('modality', filters.modality);
             if (filters.study) query.append('study', filters.study);
-            if (filters.patientType) query.append('patient_type', filters.patientType);
             if (filters.serviceStatus) {
                 const map = { 'New': '0', 'Draft': '1', 'Final': '2' };
                 query.append('service_status', map[filters.serviceStatus] || filters.serviceStatus);
@@ -205,24 +186,16 @@ export default function Dashboard() {
 
             let fCount = 0, dCount = 0, nCount = 0, dTotal = 0;
 
-            // If date range is practically empty/reset, show DB-wide totals in the cards
-            if (!filters.fromDate && !filters.toDate) {
-                const [finalCount, draftCount, newCount] = await Promise.all([
-                    fetchStatusCount('2'),
-                    fetchStatusCount('1'),
-                    fetchStatusCount('0')
-                ]);
-                fCount = finalCount;
-                dCount = draftCount;
-                nCount = newCount;
-                dTotal = data.count || 0;
-            } else {
-                // Otherwise, show stats ONLY for the current 15 items on this page
-                fCount = results.filter(r => ['2', '3', 'Final'].includes(r.service_status)).length;
-                dCount = results.filter(r => ['1', 'Draft'].includes(r.service_status)).length;
-                nCount = results.filter(r => ['0', 'New'].includes(r.service_status)).length;
-                dTotal = results.length;
-            }
+            // Fetch aggregated stats for the full filtered dataset across all pages
+            const [finalCount, draftCount, newCount] = await Promise.all([
+                fetchStatusCount('2'),
+                fetchStatusCount('1'),
+                fetchStatusCount('0')
+            ]);
+            fCount = finalCount;
+            dCount = draftCount;
+            nCount = newCount;
+            dTotal = data.count || 0;
 
             setPatients(results);
             setTotalCount(data.count || 0); // Raw DB total for pagination to work
@@ -253,13 +226,13 @@ export default function Dashboard() {
 
     const validateSearch = () => {
         // Date range is NOT required if any of these key fields are filled
-        const hasKeyFilter = !!(searchParams.id || searchParams.modality ||
-            searchParams.study || searchParams.patientType || searchParams.serviceStatus);
+        const hasKeyFilter = !!(searchParams.name || searchParams.id || searchParams.modality ||
+            searchParams.study || searchParams.serviceStatus);
 
         if (!hasKeyFilter) {
             // No key filter provided — require date range
             if (!searchParams.fromDate || !searchParams.toDate) {
-                setError('Please provide at least one of: Patient ID, Modality, Study, Patient Type, Service Status — OR a valid Date Range.');
+                setError('Please provide at least one of: Patient ID, Modality, Study, Service Status — OR a valid Date Range.');
                 return false;
             }
         }
@@ -303,7 +276,7 @@ export default function Dashboard() {
     const handleSearch = () => { if (validateSearch()) fetchPatients(searchParams, 1); };
     const handleReset = () => {
         const today = new Date().toISOString().split('T')[0];
-        const d = { name: '', id: '', modality: '', study: '', serviceStatus: '', patientType: '', radiologist: '', accessionNo: '', fromDate: today, toDate: today };
+        const d = { name: '', id: '', modality: '', study: '', serviceStatus: '', radiologist: '', accessionNo: '', fromDate: today, toDate: today };
         setSearchParams(d); fetchPatients(d, 1); setError('');
     };
 
@@ -318,7 +291,7 @@ export default function Dashboard() {
         newR: statusCounts.newR,
     };
 
-    const TH = ['Sl No', 'Patient ID', 'Patient Name', 'Study Description', 'Modality', 'Type', 'Date', 'Status', 'Action'];
+    const TH = ['Sl No', 'Patient ID', 'Patient Name', 'Study Description', 'Modality', 'Date', 'Status', 'Action'];
 
     return (
         <div className="flex flex-col min-h-screen" style={{ background: '#f1f5f9' }}>
@@ -393,11 +366,6 @@ export default function Dashboard() {
                                     <option value="New">New</option>
                                     <option value="Draft">Draft</option>
                                     <option value="Final">Final</option>
-                                </FilterSelect>
-                                <FilterSelect label="Patient Type" name="patientType" value={searchParams.patientType} onChange={handleChange}>
-                                    <option value="">All Types</option>
-                                    <option value="OP">OP — Outpatient</option>
-                                    <option value="IP">IP — Inpatient</option>
                                 </FilterSelect>
                                 <FilterSelect label="Radiologist" disabled>
                                     <option value="">Unavailable</option>
@@ -498,10 +466,6 @@ export default function Dashboard() {
                                                 >
                                                     {row.modality}
                                                 </span>
-                                            </td>
-                                            {/* Patient Type */}
-                                            <td className="px-3 py-1.5 text-center">
-                                                <TypeBadge type={row.patient_type} />
                                             </td>
                                             {/* Date */}
                                             <td className="px-3 py-1.5 text-center text-xs font-medium" style={{ color: '#94a3b8' }}>

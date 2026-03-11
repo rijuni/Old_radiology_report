@@ -210,12 +210,25 @@ export default function Header() {
                     borderBottom: '1px solid #fde68a',
                 }}
             >
-                <div className="px-5 py-1.5 flex items-center justify-center gap-2">
+                <div
+                    className="px-5 py-1.5 flex items-center justify-center gap-2"
+                    style={{ animation: 'blinkAlert 1.2s infinite' }}
+                >
                     <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
                     <p className="text-xs font-medium" style={{ color: '#92400e' }}>
                         Only Old Radiology Report Available for Viewing (Jan,2022 - March,2025)
                     </p>
                 </div>
+
+                <style>
+                    {`
+                    @keyframes blinkAlert {
+                        0% { opacity: 1; }
+                        50% { opacity: 0.3; }
+                        100% { opacity: 1; }
+                    }
+                    `}
+                </style>
             </div>
         </header>
     );
