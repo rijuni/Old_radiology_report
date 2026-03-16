@@ -12,7 +12,23 @@ export default function Header() {
     const isAdmin = localStorage.getItem('isAdmin') === 'true';
     const initials = userFullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const session_id = localStorage.getItem('session_id');
+            if (token) {
+                await fetch('/api/logout/', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ session_id })
+                });
+            }
+        } catch (err) {
+            console.error("Logout notification failed:", err);
+        }
         localStorage.clear();
         navigate('/login');
     };

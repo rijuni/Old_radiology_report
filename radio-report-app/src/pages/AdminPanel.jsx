@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Shield, Key, Plus, X, ChevronLeft, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, Shield, Key, Plus, X, ChevronLeft, Trash2, AlertCircle, CheckCircle, Clock, Globe, List, RotateCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -62,6 +62,9 @@ export default function AdminPanel() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [view, setView] = useState('users'); // 'users' or 'sessions'
+    const [sessions, setSessions] = useState([]);
+    const [sessionsLoading, setSessionsLoading] = useState(false);
 
     const [toast, setToast] = useState(null);
     const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
@@ -88,7 +91,29 @@ export default function AdminPanel() {
         finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchUsers(); }, []);
+    const fetchSessions = async () => {
+        setSessionsLoading(true);
+        try {
+            const r = await fetch('/api/sessions/', { headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' } });
+            if (r.ok) setSessions(await r.json());
+            else showToast('Failed to fetch session logs', 'error');
+        } catch { showToast('Network error while fetching sessions', 'error'); }
+        finally { setSessionsLoading(false); }
+    };
+
+    useEffect(() => { 
+        if (view === 'users') {
+            fetchUsers();
+            return;
+        }
+
+        // Initial fetch for sessions
+        fetchSessions();
+
+        // Auto-refresh sessions every 30 seconds
+        const interval = setInterval(fetchSessions, 30000);
+        return () => clearInterval(interval);
+    }, [view]);
 
     const handleCreateUser = async (e) => {
         e.preventDefault(); setCreateError('');
@@ -176,19 +201,68 @@ export default function AdminPanel() {
                                 Admin User Management
                             </h1>
                             <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>
-                                Manage staff and radiologist accounts in the system.
+                                Manage staff and monitor system usage logs.
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white transition-all duration-150"
-                        style={{ background: '#1e293b', boxShadow: '0 2px 8px rgba(30,41,59,0.25)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#0f172a'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#1e293b'}
-                    >
-                        <Plus size={15} /> Create Account
-                    </button>
+                    
+                    <div className="flex items-center gap-3">
+                        {/* Refresh Button for Sessions */}
+                        {view === 'sessions' && (
+                            <button
+                                onClick={fetchSessions}
+                                disabled={sessionsLoading}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                                style={{ 
+                                    background: '#fff', 
+                                    border: '1.5px solid #e2e8f0', 
+                                    color: '#64748b',
+                                    opacity: sessionsLoading ? 0.7 : 1
+                                }}
+                                onMouseEnter={e => !sessionsLoading && (e.currentTarget.style.background = '#f8fafc')}
+                                onMouseLeave={e => !sessionsLoading && (e.currentTarget.style.background = '#fff')}
+                            >
+                                <RotateCw size={14} className={sessionsLoading ? 'animate-spin' : ''} />
+                                {sessionsLoading ? 'Refreshing...' : 'Refresh'}
+                            </button>
+                        )}
+
+                        {/* Tab Switcher */}
+                        <div className="flex p-1 rounded-xl bg-white border border-slate-200 mr-2 shadow-sm">
+                            <button
+                                onClick={() => setView('users')}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                                style={{
+                                    background: view === 'users' ? '#1e293b' : 'transparent',
+                                    color: view === 'users' ? '#fff' : '#64748b',
+                                }}
+                            >
+                                <User size={14} /> Users
+                            </button>
+                            <button
+                                onClick={() => setView('sessions')}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                                style={{
+                                    background: view === 'sessions' ? '#1e293b' : 'transparent',
+                                    color: view === 'sessions' ? '#fff' : '#64748b',
+                                }}
+                            >
+                                <Clock size={14} /> Sessions
+                            </button>
+                        </div>
+
+                        {view === 'users' && (
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white transition-all duration-150"
+                                style={{ background: '#1e293b', boxShadow: '0 2px 8px rgba(30,41,59,0.25)' }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#0f172a'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#1e293b'}
+                            >
+                                <Plus size={15} /> Create Account
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Error */}
@@ -199,100 +273,177 @@ export default function AdminPanel() {
                     </div>
                 )}
 
-                {/* User Table */}
+                {/* Content Table */}
                 <div
                     className="rounded-2xl overflow-hidden"
                     style={{ background: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}
                 >
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr style={{ background: '#334155', borderBottom: '1px solid #475569' }}>
-                                {['User ID', 'Full Name', 'Role', 'Status', 'Actions'].map((h, i) => (
-                                    <th
-                                        key={h}
-                                        className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider"
-                                        style={{ color: '#94a3b8', textAlign: i === 4 ? 'right' : 'left' }}
-                                    >
-                                        {h}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {users.map((user, idx) => (
-                                <tr
-                                    key={user.id}
-                                    style={{
-                                        background: idx % 2 === 0 ? '#ffffff' : '#f8fafc',
-                                        borderBottom: '1px solid #f1f5f9',
-                                        transition: 'background 0.12s',
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
-                                    onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f8fafc'}
-                                >
-                                    <td className="px-5 py-3.5 font-mono text-xs font-bold" style={{ color: '#2563eb' }}>
-                                        {user.username}
-                                    </td>
-                                    <td className="px-5 py-3.5 font-semibold" style={{ color: '#1e293b' }}>
-                                        {user.first_name} {user.last_name}
-                                    </td>
-                                    <td className="px-5 py-3.5">
-                                        {user.is_staff ? (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
-                                                style={{ background: '#f3f0ff', border: '1px solid #e9d5ff', color: '#7c3aed' }}>
-                                                <Shield size={11} /> Admin
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
-                                                style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#64748b' }}>
-                                                <User size={11} /> Standard
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-5 py-3.5">
-                                        {user.is_active ? (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
-                                                style={{ background: '#dcfce7', border: '1px solid #86efac', color: '#15803d' }}>
-                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Active
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
-                                                style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626' }}>
-                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Inactive
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-5 py-3.5">
-                                        <div className="flex justify-end gap-2">
-                                            <button
-                                                onClick={() => { setSelectedUser(user); setShowResetModal(true); }}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
-                                                style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', color: '#2563eb' }}
-                                                onMouseEnter={e => e.currentTarget.style.background = '#dbeafe'}
-                                                onMouseLeave={e => e.currentTarget.style.background = '#eff6ff'}
-                                            >
-                                                <Key size={11} /> Reset
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteUser(user.id, user.username)}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
-                                                style={{ background: '#fef2f2', border: '1.5px solid #fecaca', color: '#ef4444' }}
-                                                onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'}
-                                                onMouseLeave={e => e.currentTarget.style.background = '#fef2f2'}
-                                            >
-                                                <Trash2 size={11} /> Remove
-                                            </button>
-                                        </div>
-                                    </td>
+                    {view === 'users' ? (
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr style={{ background: '#334155', borderBottom: '1px solid #475569' }}>
+                                    {['User ID', 'Full Name', 'Role', 'Status', 'Actions'].map((h, i) => (
+                                        <th
+                                            key={h}
+                                            className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider"
+                                            style={{ color: '#94a3b8', textAlign: i === 4 ? 'right' : 'left' }}
+                                        >
+                                            {h}
+                                        </th>
+                                    ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {users.map((user, idx) => (
+                                    <tr
+                                        key={user.id}
+                                        style={{
+                                            background: idx % 2 === 0 ? '#ffffff' : '#f8fafc',
+                                            borderBottom: '1px solid #f1f5f9',
+                                            transition: 'background 0.12s',
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
+                                        onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f8fafc'}
+                                    >
+                                        <td className="px-5 py-3.5 font-mono text-xs font-bold" style={{ color: '#2563eb' }}>
+                                            {user.username}
+                                        </td>
+                                        <td className="px-5 py-3.5 font-semibold" style={{ color: '#1e293b' }}>
+                                            {user.first_name} {user.last_name}
+                                        </td>
+                                        <td className="px-5 py-3.5">
+                                            {user.is_staff ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
+                                                    style={{ background: '#f3f0ff', border: '1px solid #e9d5ff', color: '#7c3aed' }}>
+                                                    <Shield size={11} /> Admin
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                                                    style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#64748b' }}>
+                                                    <User size={11} /> Standard
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-5 py-3.5">
+                                            {user.is_active ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+                                                    style={{ background: '#dcfce7', border: '1px solid #86efac', color: '#15803d' }}>
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Active
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+                                                    style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626' }}>
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Inactive
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-5 py-3.5">
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => { setSelectedUser(user); setShowResetModal(true); }}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
+                                                    style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', color: '#2563eb' }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = '#dbeafe'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = '#eff6ff'}
+                                                >
+                                                    <Key size={11} /> Reset
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteUser(user.id, user.username)}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
+                                                    style={{ background: '#fef2f2', border: '1.5px solid #fecaca', color: '#ef4444' }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = '#fef2f2'}
+                                                >
+                                                    <Trash2 size={11} /> Remove
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr style={{ background: '#334155', borderBottom: '1px solid #475569' }}>
+                                        {['User', 'IP Address', 'Login Time', 'Logout Time', 'Duration'].map((h, i) => (
+                                            <th
+                                                key={h}
+                                                className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider"
+                                                style={{ color: '#94a3b8', textAlign: 'left' }}
+                                            >
+                                                {h}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {sessionsLoading ? (
+                                        [...Array(5)].map((_, i) => (
+                                            <tr key={i} className="animate-pulse">
+                                                {[...Array(5)].map((_, j) => (
+                                                    <td key={j} className="px-5 py-4"><div className="h-4 bg-slate-100 rounded w-24"></div></td>
+                                                ))}
+                                            </tr>
+                                        ))
+                                    ) : sessions.map((session, idx) => (
+                                        <tr
+                                            key={session.id}
+                                            style={{
+                                                background: idx % 2 === 0 ? '#ffffff' : '#f8fafc',
+                                                borderBottom: '1px solid #f1f5f9',
+                                                transition: 'background 0.12s',
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
+                                            onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f8fafc'}
+                                        >
+                                            <td className="px-5 py-3.5">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-800">{session.full_name}</span>
+                                                    <span className="text-xs font-mono text-blue-600">{session.username}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-3.5 font-mono text-xs text-slate-500">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Globe size={11} className="text-slate-400" />
+                                                    {session.ip_address || 'Unknown'}
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-3.5 text-xs text-slate-600">
+                                                {new Date(session.login_time).toLocaleString()}
+                                            </td>
+                                            <td className="px-5 py-3.5 text-xs text-slate-600">
+                                                {session.logout_time ? new Date(session.logout_time).toLocaleString() : (
+                                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-green-50 text-green-700 font-bold border border-green-100">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                                        Online
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
+                                                    style={{ 
+                                                        background: session.duration_str === 'Active' ? '#f1f5f9' : '#fff', 
+                                                        border: '1px solid #e2e8f0',
+                                                        color: session.duration_str === 'Active' ? '#64748b' : '#334155' 
+                                                    }}>
+                                                    <Clock size={11} />
+                                                    {session.duration_str}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
-                    {users.length === 0 && !loading && (
+                    {((view === 'users' && users.length === 0 && !loading) || (view === 'sessions' && sessions.length === 0 && !sessionsLoading)) && (
                         <div className="py-16 text-center">
-                            <User size={32} className="mx-auto mb-2" style={{ color: '#e2e8f0' }} />
-                            <p className="text-sm font-medium" style={{ color: '#cbd5e1' }}>No users found</p>
+                            {view === 'users' ? <User size={32} className="mx-auto mb-2" style={{ color: '#e2e8f0' }} /> : <List size={32} className="mx-auto mb-2" style={{ color: '#e2e8f0' }} />}
+                            <p className="text-sm font-medium" style={{ color: '#cbd5e1' }}>No results found</p>
                         </div>
                     )}
                 </div>

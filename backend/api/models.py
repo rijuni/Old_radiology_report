@@ -17,5 +17,18 @@ class Patient(models.Model):
     report_path = models.CharField(max_length=500, blank=True, null=True)
     exam_date = models.DateField()
 
+
+class UserSession(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sessions')
+    login_time = models.DateTimeField(auto_now_add=True)
+    logout_time = models.DateTimeField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    
+    @property
+    def duration(self):
+        if self.login_time and self.logout_time:
+            return self.logout_time - self.login_time
+        return None
+
     def __str__(self):
-        return f"{self.name} - {self.mrn}"
+        return f"{self.user.username} - {self.login_time}"

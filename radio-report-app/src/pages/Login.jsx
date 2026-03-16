@@ -27,6 +27,7 @@ export default function Login() {
             const data = await res.json();
             if (res.ok) {
                 localStorage.setItem('token', data.token);
+                localStorage.setItem('session_id', data.session_id);
                 localStorage.setItem('isAuthenticated', 'true');
                 localStorage.setItem('userId', data.user_id);
                 localStorage.setItem('employeeId', data.username);

@@ -118,6 +118,7 @@ export default function Dashboard() {
     const [totalCount, setTotalCount] = useState(0);
     const [filtersExpanded, setFiltersExpanded] = useState(true);
     const [error, setError] = useState('');
+    const [searchExecuted, setSearchExecuted] = useState(false);
     const [jumpPage, setJumpPage] = useState('');
     const [reportError, setReportError] = useState({});   // { [rowIdx]: message }
     const [statusCounts, setStatusCounts] = useState({ final: 0, draft: 0, newR: 0, displayTotal: 0 });
@@ -131,9 +132,9 @@ export default function Dashboard() {
         if (!localStorage.getItem('token')) navigate('/login');
     }, [navigate]);
 
-    useEffect(() => { fetchPatients({}, 1); }, []);
+    useEffect(() => { fetchPatients({}, 1, true); }, []);
 
-    const fetchPatients = async (filters, page = 1) => {
+    const fetchPatients = async (filters, page = 1, skipResults = false) => {
         setLoading(true); setError('');
         try {
             const token = localStorage.getItem('token');
@@ -197,11 +198,17 @@ export default function Dashboard() {
             nCount = newCount;
             dTotal = data.count || 0;
 
-            setPatients(results);
+            if (!skipResults) {
+                setPatients(results);
+                setTotalPages(Math.ceil((data.count || 0) / 15));
+                setCurrentPage(page);
+            } else {
+                setPatients([]);
+                setTotalPages(1);
+                setCurrentPage(1);
+            }
             setTotalCount(data.count || 0); // Raw DB total for pagination to work
-            setTotalPages(Math.ceil((data.count || 0) / 15));
-            setCurrentPage(page);
-            setStatusCounts({ final: fCount, draft: dCount, newR: nCount, displayTotal: dTotal });
+            setStatusCounts({ final: fCount, draft: dCount, newR: nCount, displayTotal: data.count || 0 });
         } catch (err) {
             console.error(err);
             setError('Error fetching patients. Please try again.');
@@ -273,11 +280,14 @@ export default function Dashboard() {
         }
     };
 
-    const handleSearch = () => { if (validateSearch()) fetchPatients(searchParams, 1); };
+    const handleSearch = () => { if (validateSearch()) { setSearchExecuted(true); fetchPatients(searchParams, 1); } };
     const handleReset = () => {
         const today = new Date().toISOString().split('T')[0];
         const d = { name: '', id: '', modality: '', study: '', serviceStatus: '', radiologist: '', accessionNo: '', fromDate: today, toDate: today };
-        setSearchParams(d); fetchPatients(d, 1); setError('');
+        setSearchParams(d);
+        setSearchExecuted(false);
+        fetchPatients(d, 1, true);
+        setError('');
     };
 
     const today = new Date().toISOString().split('T')[0];
@@ -300,7 +310,7 @@ export default function Dashboard() {
             <main className="flex-1 pb-8 px-3 md:px-5 pt-3" style={{ animation: 'fadeIn 0.4s ease-out' }}>
 
                 {/* ── Stats Row ────────────────────────────────────────── */}
-                {!loading && patients.length > 0 && (
+                {!loading && (
                     <div
                         className="sticky z-40 pt-1 pb-3 -mt-1"
                         style={{ top: '86px', background: '#f1f5f9', animation: 'slideUp 0.35s ease-out' }}
@@ -400,7 +410,7 @@ export default function Dashboard() {
                     )}
 
                     {/* Results info strip */}
-                    {!loading && patients.length > 0 && (
+                    {searchExecuted && !loading && patients.length > 0 && (
                         <div
                             className="px-4 py-1.5 flex items-center gap-1.5 text-xs"
                             style={{ borderBottom: '1px solid #f1f5f9', color: '#94a3b8', background: '#fff' }}
@@ -411,284 +421,287 @@ export default function Dashboard() {
                         </div>
                     )}
 
-                    {/* ── Table ──────────────────────────────────────────── */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-sm">
-                            <thead>
-                                <tr style={{ background: '#334155' }}>
-                                    {TH.map(th => (
-                                        <th
-                                            key={th}
-                                            className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider"
-                                            style={{ color: '#ffffff', whiteSpace: 'nowrap' }}
-                                        >
-                                            {th}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    [...Array(8)].map((_, i) => <SkeletonRow key={i} />)
-                                ) : patients.length > 0 ? (
-                                    patients.map((row, idx) => (
-                                        <tr
-                                            key={idx}
-                                            style={{
-                                                background: idx % 2 === 0 ? '#ffffff' : '#f8fafc',
-                                                borderBottom: '1px solid #f1f5f9',
-                                                transition: 'background 0.12s',
-                                            }}
-                                            onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
-                                            onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f8fafc'; }}
-                                        >
-                                            {/* Sl No */}
-                                            <td className="px-3 py-1.5 text-xs font-medium" style={{ color: '#cbd5e1' }}>
-                                                {(currentPage - 1) * 15 + idx + 1}
-                                            </td>
-                                            {/* MRN */}
-                                            <td className="px-3 py-1.5 font-mono text-xs font-bold" style={{ color: '#2563eb' }}>
-                                                {row.mrn}
-                                            </td>
-                                            {/* Name */}
-                                            <td className="px-3 py-1.5 font-semibold text-sm" style={{ color: '#1e293b' }}>
-                                                {row.name}
-                                            </td>
-                                            {/* Study */}
-                                            <td className="px-3 py-1.5 text-xs" style={{ color: '#64748b', maxWidth: '220px' }}>
-                                                {row.study_description}
-                                            </td>
-                                            {/* Modality */}
-                                            <td className="px-3 py-1.5 text-center">
-                                                <span
-                                                    className="px-2 py-1 rounded font-mono text-xs font-bold"
-                                                    style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569' }}
+                    {/* ── Table & Pagination Area ────────────────────────── */}
+                    {searchExecuted && (
+                        <>
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-sm">
+                                    <thead>
+                                        <tr style={{ background: '#334155' }}>
+                                            {TH.map(th => (
+                                                <th
+                                                    key={th}
+                                                    className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider"
+                                                    style={{ color: '#ffffff', whiteSpace: 'nowrap' }}
                                                 >
-                                                    {row.modality}
-                                                </span>
-                                            </td>
-                                            {/* Date */}
-                                            <td className="px-3 py-1.5 text-center text-xs font-medium" style={{ color: '#94a3b8' }}>
-                                                {row.exam_date}
-                                            </td>
-                                            {/* Status */}
-                                            <td className="px-3 py-1.5 text-center">
-                                                <StatusBadge status={row.service_status} />
-                                            </td>
-                                            {/* Action */}
-                                            <td className="px-3 py-1.5">
-                                                {row.report_path ? (
-                                                    <div className="flex flex-col items-center gap-1.5">
-                                                        <button
-                                                            onClick={() => handleViewReport(
-                                                                `/api/reports/view/?path=${encodeURIComponent(row.report_path)}&token=${localStorage.getItem('token')}`,
-                                                                idx
-                                                            )}
-                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all duration-150"
-                                                            style={{ background: '#2563eb', boxShadow: '0 2px 6px rgba(37,99,235,0.3)', border: 'none', cursor: 'pointer' }}
-                                                            onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
-                                                            onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
-                                                        >
-                                                            <Eye size={12} /> View Report
-                                                        </button>
-                                                        {reportError[idx] && (
-                                                            <span
-                                                                className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold"
-                                                                style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', animation: 'slideUp 0.2s ease-out', whiteSpace: 'nowrap' }}
-                                                            >
-                                                                <AlertTriangle size={10} /> {reportError[idx]}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs italic" style={{ color: '#cbd5e1' }}>No Report</span>
-                                                )}
-                                            </td>
+                                                    {th}
+                                                </th>
+                                            ))}
                                         </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={TH.length} className="py-16 text-center">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                                                    style={{ background: '#f1f5f9', border: '2px solid #e2e8f0' }}>
-                                                    <Search size={24} style={{ color: '#cbd5e1' }} />
-                                                </div>
-                                                <p className="text-sm font-bold" style={{ color: '#94a3b8' }}>No records found</p>
-                                                <p className="text-xs" style={{ color: '#cbd5e1' }}>Try adjusting your search filters</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* ── Pagination ──────────────────────────────────────── */}
-                    {totalPages > 1 && (() => {
-                        // Build the window of page numbers to show
-                        const WINDOW = 2; // pages on each side of current
-                        const pages = [];
-                        const start = Math.max(2, currentPage - WINDOW);
-                        const end = Math.min(totalPages - 1, currentPage + WINDOW);
-
-                        pages.push(1);
-                        if (start > 2) pages.push('...');
-                        for (let p = start; p <= end; p++) pages.push(p);
-                        if (end < totalPages - 1) pages.push('...');
-                        if (totalPages > 1) pages.push(totalPages);
-
-                        const handleJump = () => {
-                            const n = parseInt(jumpPage, 10);
-                            if (!isNaN(n) && n >= 1 && n <= totalPages && n !== currentPage) {
-                                fetchPatients(searchParams, n);
-                            }
-                            setJumpPage('');
-                        };
-
-                        return (
-                            <div
-                                style={{
-                                    borderTop: '1px solid #e2e8f0',
-                                    background: '#f8fafc',
-                                    padding: '10px 20px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    gap: '12px',
-                                    flexWrap: 'wrap',
-                                }}
-                            >
-                                {/* Left: record / page summary */}
-                                <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                    <span style={{ fontWeight: 700, color: '#1e293b' }}>{totalCount.toLocaleString()}</span> records
-                                    {' · '}
-                                    Page{' '}
-                                    <span style={{ fontWeight: 700, color: '#334155' }}>{currentPage}</span>
-                                    {' / '}
-                                    <span style={{ fontWeight: 700, color: '#334155' }}>{totalPages}</span>
-                                </span>
-
-                                {/* Centre: page number buttons + prev/next */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-
-                                    {/* Previous */}
-                                    <button
-                                        onClick={() => fetchPatients(searchParams, currentPage - 1)}
-                                        disabled={currentPage === 1 || loading}
-                                        title="Previous page"
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '4px',
-                                            padding: '5px 10px', borderRadius: '7px',
-                                            fontSize: '12px', fontWeight: 700,
-                                            border: '1.5px solid #e2e8f0',
-                                            background: '#fff', color: '#475569',
-                                            cursor: (currentPage === 1 || loading) ? 'not-allowed' : 'pointer',
-                                            opacity: (currentPage === 1 || loading) ? 0.35 : 1,
-                                            transition: 'all 0.15s',
-                                        }}
-                                        onMouseEnter={e => { if (currentPage !== 1 && !loading) e.currentTarget.style.background = '#f1f5f9'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
-                                    >
-                                        <ChevronLeft size={13} /> Prev
-                                    </button>
-
-                                    {/* Page number chips */}
-                                    {pages.map((p, i) =>
-                                        p === '...' ? (
-                                            <span
-                                                key={`ellipsis-${i}`}
-                                                style={{ padding: '5px 6px', fontSize: '12px', color: '#94a3b8', userSelect: 'none' }}
-                                            >…</span>
+                                    </thead>
+                                    <tbody>
+                                        {loading ? (
+                                            [...Array(8)].map((_, i) => <SkeletonRow key={i} />)
+                                        ) : patients.length > 0 ? (
+                                            patients.map((row, idx) => (
+                                                <tr
+                                                    key={idx}
+                                                    style={{
+                                                        background: idx % 2 === 0 ? '#ffffff' : '#f8fafc',
+                                                        borderBottom: '1px solid #f1f5f9',
+                                                        transition: 'background 0.12s',
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f8fafc'; }}
+                                                >
+                                                    {/* Sl No */}
+                                                    <td className="px-3 py-1.5 text-xs font-medium" style={{ color: '#cbd5e1' }}>
+                                                        {(currentPage - 1) * 15 + idx + 1}
+                                                    </td>
+                                                    {/* MRN */}
+                                                    <td className="px-3 py-1.5 font-mono text-xs font-bold" style={{ color: '#2563eb' }}>
+                                                        {row.mrn}
+                                                    </td>
+                                                    {/* Name */}
+                                                    <td className="px-3 py-1.5 font-semibold text-sm" style={{ color: '#1e293b' }}>
+                                                        {row.name}
+                                                    </td>
+                                                    {/* Study */}
+                                                    <td className="px-3 py-1.5 text-xs" style={{ color: '#64748b', maxWidth: '220px' }}>
+                                                        {row.study_description}
+                                                    </td>
+                                                    {/* Modality */}
+                                                    <td className="px-3 py-1.5 text-center">
+                                                        <span
+                                                            className="px-2 py-1 rounded font-mono text-xs font-bold"
+                                                            style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569' }}
+                                                        >
+                                                            {row.modality}
+                                                        </span>
+                                                    </td>
+                                                    {/* Date */}
+                                                    <td className="px-3 py-1.5 text-center text-xs font-medium" style={{ color: '#94a3b8' }}>
+                                                        {row.exam_date}
+                                                    </td>
+                                                    {/* Status */}
+                                                    <td className="px-3 py-1.5 text-center">
+                                                        <StatusBadge status={row.service_status} />
+                                                    </td>
+                                                    {/* Action */}
+                                                    <td className="px-3 py-1.5">
+                                                        {row.report_path ? (
+                                                            <div className="flex flex-col items-center gap-1.5">
+                                                                <button
+                                                                    onClick={() => handleViewReport(
+                                                                        `/api/reports/view/?path=${encodeURIComponent(row.report_path)}&token=${localStorage.getItem('token')}`,
+                                                                        idx
+                                                                    )}
+                                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all duration-150"
+                                                                    style={{ background: '#2563eb', boxShadow: '0 2px 6px rgba(37,99,235,0.3)', border: 'none', cursor: 'pointer' }}
+                                                                    onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
+                                                                    onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
+                                                                >
+                                                                    <Eye size={12} /> View Report
+                                                                </button>
+                                                                {reportError[idx] && (
+                                                                    <span
+                                                                        className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold"
+                                                                        style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', animation: 'slideUp 0.2s ease-out', whiteSpace: 'nowrap' }}
+                                                                    >
+                                                                        <AlertTriangle size={10} /> {reportError[idx]}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs italic" style={{ color: '#cbd5e1' }}>No Report</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
                                         ) : (
+                                            <tr>
+                                                <td colSpan={TH.length} className="py-16 text-center">
+                                                    <div className="flex flex-col items-center gap-3">
+                                                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                                                            style={{ background: '#f1f5f9', border: '2px solid #e2e8f0' }}>
+                                                            <Search size={24} style={{ color: '#cbd5e1' }} />
+                                                        </div>
+                                                        <p className="text-sm font-bold" style={{ color: '#94a3b8' }}>No records found</p>
+                                                        <p className="text-xs" style={{ color: '#cbd5e1' }}>Try adjusting your search filters</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {totalPages > 1 && (() => {
+                                // Build the window of page numbers to show
+                                const WINDOW = 2; // pages on each side of current
+                                const pages = [];
+                                const start = Math.max(2, currentPage - WINDOW);
+                                const end = Math.min(totalPages - 1, currentPage + WINDOW);
+
+                                pages.push(1);
+                                if (start > 2) pages.push('...');
+                                for (let p = start; p <= end; p++) pages.push(p);
+                                if (end < totalPages - 1) pages.push('...');
+                                if (totalPages > 1) pages.push(totalPages);
+
+                                const handleJump = () => {
+                                    const n = parseInt(jumpPage, 10);
+                                    if (!isNaN(n) && n >= 1 && n <= totalPages && n !== currentPage) {
+                                        fetchPatients(searchParams, n);
+                                    }
+                                    setJumpPage('');
+                                };
+
+                                return (
+                                    <div
+                                        style={{
+                                            borderTop: '1px solid #e2e8f0',
+                                            background: '#f8fafc',
+                                            padding: '10px 20px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            gap: '12px',
+                                            flexWrap: 'wrap',
+                                        }}
+                                    >
+                                        {/* Left: record / page summary */}
+                                        <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                            <span style={{ fontWeight: 700, color: '#1e293b' }}>{totalCount.toLocaleString()}</span> records
+                                            {' · '}
+                                            Page{' '}
+                                            <span style={{ fontWeight: 700, color: '#334155' }}>{currentPage}</span>
+                                            {' / '}
+                                            <span style={{ fontWeight: 700, color: '#334155' }}>{totalPages}</span>
+                                        </span>
+
+                                        {/* Centre: page number buttons + prev/next */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+
+                                            {/* Previous */}
                                             <button
-                                                key={p}
-                                                onClick={() => p !== currentPage && fetchPatients(searchParams, p)}
-                                                disabled={loading}
+                                                onClick={() => fetchPatients(searchParams, currentPage - 1)}
+                                                disabled={currentPage === 1 || loading}
+                                                title="Previous page"
                                                 style={{
-                                                    minWidth: '32px', height: '30px',
-                                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                                    borderRadius: '7px',
-                                                    fontSize: '12px', fontWeight: p === currentPage ? 800 : 600,
-                                                    border: p === currentPage ? 'none' : '1.5px solid #e2e8f0',
-                                                    background: p === currentPage ? '#1e293b' : '#fff',
-                                                    color: p === currentPage ? '#fff' : '#475569',
-                                                    cursor: (p === currentPage || loading) ? 'default' : 'pointer',
-                                                    boxShadow: p === currentPage ? '0 2px 8px rgba(30,41,59,0.25)' : 'none',
-                                                    transform: p === currentPage ? 'scale(1.08)' : 'scale(1)',
+                                                    display: 'flex', alignItems: 'center', gap: '4px',
+                                                    padding: '5px 10px', borderRadius: '7px',
+                                                    fontSize: '12px', fontWeight: 700,
+                                                    border: '1.5px solid #e2e8f0',
+                                                    background: '#fff', color: '#475569',
+                                                    cursor: (currentPage === 1 || loading) ? 'not-allowed' : 'pointer',
+                                                    opacity: (currentPage === 1 || loading) ? 0.35 : 1,
                                                     transition: 'all 0.15s',
                                                 }}
-                                                onMouseEnter={e => { if (p !== currentPage && !loading) e.currentTarget.style.background = '#f1f5f9'; }}
-                                                onMouseLeave={e => { if (p !== currentPage) e.currentTarget.style.background = '#fff'; }}
+                                                onMouseEnter={e => { if (currentPage !== 1 && !loading) e.currentTarget.style.background = '#f1f5f9'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
                                             >
-                                                {p}
+                                                <ChevronLeft size={13} /> Prev
                                             </button>
-                                        )
-                                    )}
 
-                                    {/* Next */}
-                                    <button
-                                        onClick={() => fetchPatients(searchParams, currentPage + 1)}
-                                        disabled={currentPage === totalPages || loading}
-                                        title="Next page"
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '4px',
-                                            padding: '5px 10px', borderRadius: '7px',
-                                            fontSize: '12px', fontWeight: 700,
-                                            border: '1.5px solid #e2e8f0',
-                                            background: '#fff', color: '#475569',
-                                            cursor: (currentPage === totalPages || loading) ? 'not-allowed' : 'pointer',
-                                            opacity: (currentPage === totalPages || loading) ? 0.35 : 1,
-                                            transition: 'all 0.15s',
-                                        }}
-                                        onMouseEnter={e => { if (currentPage !== totalPages && !loading) e.currentTarget.style.background = '#f1f5f9'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
-                                    >
-                                        Next <ChevronRight size={13} />
-                                    </button>
-                                </div>
+                                            {/* Page number chips */}
+                                            {pages.map((p, i) =>
+                                                p === '...' ? (
+                                                    <span
+                                                        key={`ellipsis-${i}`}
+                                                        style={{ padding: '5px 6px', fontSize: '12px', color: '#94a3b8', userSelect: 'none' }}
+                                                    >…</span>
+                                                ) : (
+                                                    <button
+                                                        key={p}
+                                                        onClick={() => p !== currentPage && fetchPatients(searchParams, p)}
+                                                        disabled={loading}
+                                                        style={{
+                                                            minWidth: '32px', height: '30px',
+                                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                            borderRadius: '7px',
+                                                            fontSize: '12px', fontWeight: p === currentPage ? 800 : 600,
+                                                            border: p === currentPage ? 'none' : '1.5px solid #e2e8f0',
+                                                            background: p === currentPage ? '#1e293b' : '#fff',
+                                                            color: p === currentPage ? '#fff' : '#475569',
+                                                            cursor: (p === currentPage || loading) ? 'default' : 'pointer',
+                                                            boxShadow: p === currentPage ? '0 2px 8px rgba(30,41,59,0.25)' : 'none',
+                                                            transform: p === currentPage ? 'scale(1.08)' : 'scale(1)',
+                                                            transition: 'all 0.15s',
+                                                        }}
+                                                        onMouseEnter={e => { if (p !== currentPage && !loading) e.currentTarget.style.background = '#f1f5f9'; }}
+                                                        onMouseLeave={e => { if (p !== currentPage) e.currentTarget.style.background = '#fff'; }}
+                                                    >
+                                                        {p}
+                                                    </button>
+                                                )
+                                            )}
 
-                                {/* Right: Jump-to-page */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500, whiteSpace: 'nowrap' }}>Go to:</span>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        max={totalPages}
-                                        value={jumpPage}
-                                        onChange={e => setJumpPage(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && handleJump()}
-                                        placeholder="#"
-                                        style={{
-                                            width: '52px', height: '30px',
-                                            border: '1.5px solid #e2e8f0', borderRadius: '7px',
-                                            padding: '0 8px', fontSize: '12px', fontWeight: 600,
-                                            color: '#334155', background: '#fff',
-                                            textAlign: 'center', outline: 'none',
-                                        }}
-                                        onFocus={e => { e.target.style.borderColor = '#334155'; }}
-                                        onBlur={e => { e.target.style.borderColor = '#e2e8f0'; }}
-                                    />
-                                    <button
-                                        onClick={handleJump}
-                                        disabled={loading}
-                                        style={{
-                                            height: '30px', padding: '0 10px',
-                                            borderRadius: '7px', fontSize: '12px', fontWeight: 700,
-                                            background: '#334155', color: '#fff', border: 'none',
-                                            cursor: loading ? 'not-allowed' : 'pointer',
-                                            opacity: loading ? 0.5 : 1,
-                                            transition: 'background 0.15s',
-                                        }}
-                                        onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#1e293b'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = '#334155'; }}
-                                    >
-                                        Go
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    })()}
+                                            {/* Next */}
+                                            <button
+                                                onClick={() => fetchPatients(searchParams, currentPage + 1)}
+                                                disabled={currentPage === totalPages || loading}
+                                                title="Next page"
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '4px',
+                                                    padding: '5px 10px', borderRadius: '7px',
+                                                    fontSize: '12px', fontWeight: 700,
+                                                    border: '1.5px solid #e2e8f0',
+                                                    background: '#fff', color: '#475569',
+                                                    cursor: (currentPage === totalPages || loading) ? 'not-allowed' : 'pointer',
+                                                    opacity: (currentPage === totalPages || loading) ? 0.35 : 1,
+                                                    transition: 'all 0.15s',
+                                                }}
+                                                onMouseEnter={e => { if (currentPage !== totalPages && !loading) e.currentTarget.style.background = '#f1f5f9'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+                                            >
+                                                Next <ChevronRight size={13} />
+                                            </button>
+                                        </div>
+
+                                        {/* Right: Jump-to-page */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500, whiteSpace: 'nowrap' }}>Go to:</span>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                max={totalPages}
+                                                value={jumpPage}
+                                                onChange={e => setJumpPage(e.target.value)}
+                                                onKeyDown={e => e.key === 'Enter' && handleJump()}
+                                                placeholder="#"
+                                                style={{
+                                                    width: '52px', height: '30px',
+                                                    border: '1.5px solid #e2e8f0', borderRadius: '7px',
+                                                    padding: '0 8px', fontSize: '12px', fontWeight: 600,
+                                                    color: '#334155', background: '#fff',
+                                                    textAlign: 'center', outline: 'none',
+                                                }}
+                                                onFocus={e => { e.target.style.borderColor = '#334155'; }}
+                                                onBlur={e => { e.target.style.borderColor = '#e2e8f0'; }}
+                                            />
+                                            <button
+                                                onClick={handleJump}
+                                                disabled={loading}
+                                                style={{
+                                                    height: '30px', padding: '0 10px',
+                                                    borderRadius: '7px', fontSize: '12px', fontWeight: 700,
+                                                    background: '#334155', color: '#fff', border: 'none',
+                                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                                    opacity: loading ? 0.5 : 1,
+                                                    transition: 'background 0.15s',
+                                                }}
+                                                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#1e293b'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = '#334155'; }}
+                                            >
+                                                Go
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </>
+                    )}
                 </div>
             </main>
 

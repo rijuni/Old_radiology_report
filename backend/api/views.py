@@ -4,11 +4,11 @@ from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.pagination import PageNumberPagination
-from .models import User, Patient
-from .serializers import UserSerializer, PatientSerializer, AdminUserCreateSerializer, PasswordResetSerializer
+from .models import User, Patient, UserSession
+from .serializers import UserSerializer, PatientSerializer, AdminUserCreateSerializer, PasswordResetSerializer, UserSessionSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
-from datetime import datetime
+from django.utils import timezone
 import os
 from django.conf import settings
 from django.http import FileResponse, Http404
@@ -92,8 +92,21 @@ class CustomAuthToken(ObtainAuthToken):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
+        
+        # Log session
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        
+        UserSession.objects.filter(user=user, logout_time__isnull=True).update(logout_time=timezone.now())
+        
+        session = UserSession.objects.create(user=user, ip_address=ip)
+        
         return Response({
             'token': token.key,
+            'session_id': session.id,
             'user_id': user.pk,
             'email': user.email,
             'username': user.username,
@@ -154,4 +167,28 @@ class ServeReportView(APIView):
             except Exception as e:
                 return Response({"error": f"Error opening file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
         raise Http404("Report not found on server")
+
+class LogoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        session_id = request.data.get('session_id')
+        if session_id:
+            try:
+                session = UserSession.objects.get(id=session_id, user=request.user)
+                session.logout_time = timezone.now()
+                session.save()
+            except UserSession.DoesNotExist:
+                pass
+        
+        # Also clean up any other dangling sessions for this user
+        UserSession.objects.filter(user=request.user, logout_time__isnull=True).update(logout_time=timezone.now())
+        
+        return Response({"status": "logged out"})
+
+class SessionViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = UserSession.objects.all().order_by('-login_time')
+    serializer_class = UserSessionSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
