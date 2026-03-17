@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Shield, Key, Plus, X, ChevronLeft, Trash2, AlertCircle, CheckCircle, Clock, Globe, List, RotateCw } from 'lucide-react';
+import { User, Shield, Key, Plus, X, ChevronLeft, Trash2, AlertCircle, CheckCircle, Clock, Globe, List, RotateCw, Lock, Unlock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -156,6 +156,22 @@ export default function AdminPanel() {
             if (r.ok) fetchUsers();
             else setError('Failed to delete user');
         } catch { setError('Network error'); }
+    };
+
+    const handleToggleStatus = async (user) => {
+        const action = user.is_active ? 'Block' : 'Unblock';
+        if (!window.confirm(`${action} user "${user.username}"?`)) return;
+        
+        try {
+            const r = await fetch(`/api/users/${user.id}/toggle_status/`, {
+                method: 'POST',
+                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' }
+            });
+            if (r.ok) {
+                showToast(`User ${user.username} ${user.is_active ? 'blocked' : 'unblocked'} successfully`);
+                fetchUsers();
+            } else showToast('Failed to update user status', 'error');
+        } catch { showToast('Network error', 'error'); }
     };
 
     if (loading && users.length === 0) {
@@ -333,12 +349,26 @@ export default function AdminPanel() {
                                             ) : (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
                                                     style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626' }}>
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Inactive
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Blocked
                                                 </span>
                                             )}
                                         </td>
                                         <td className="px-5 py-3.5">
                                             <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => handleToggleStatus(user)}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
+                                                    style={{ 
+                                                        background: user.is_active ? '#fff7ed' : '#f0fdf4', 
+                                                        border: `1.5px solid ${user.is_active ? '#ffedd5' : '#dcfce7'}`, 
+                                                        color: user.is_active ? '#9a3412' : '#166534' 
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = user.is_active ? '#ffedd5' : '#dcfce7'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = user.is_active ? '#fff7ed' : '#f0fdf4'}
+                                                >
+                                                    {user.is_active ? <Lock size={11} /> : <Unlock size={11} />}
+                                                    {user.is_active ? 'Block' : 'Unblock'}
+                                                </button>
                                                 <button
                                                     onClick={() => { setSelectedUser(user); setShowResetModal(true); }}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"

@@ -85,23 +85,66 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors,
                             status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminUser])
+    def toggle_status(self, request, pk=None):
+        user = self.get_object()
+        user.is_active = not user.is_active
+        if user.is_active:
+            user.failed_login_attempts = 0
+        user.save()
+        return Response({'status': 'active' if user.is_active else 'blocked'})
+
 class CustomAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.is_active:
+            return Response({
+                'error': 'Your account has been blocked due to multiple failed login attempts. Please contact an Administrator.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Use standard DRF serializer for basic validation and user authentication
         serializer = self.serializer_class(data=request.data,
                                            context={'request': request})
-        serializer.is_valid(raise_exception=True)
+        
+        try:
+            serializer.is_valid(raise_exception=True)
+            # Success
+            user.failed_login_attempts = 0
+            user.save()
+        except:
+            # Failure
+            user.failed_login_attempts += 1
+            if user.failed_login_attempts >= 3:
+                user.is_active = False
+                user.save()
+                return Response({
+                    'error': 'id is blocked , kindly contact to admin'
+                }, status=status.HTTP_403_FORBIDDEN)
+            else:
+                user.save()
+                attempts_left = 3 - user.failed_login_attempts
+                return Response({
+                    'error': f'{attempts_left} attempts remaining'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
         
-        # Log session
+        # Capture the true source IP (bypassing proxies/internal server IPs)
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+            ip = x_forwarded_for.split(',')[0].strip()
         else:
             ip = request.META.get('REMOTE_ADDR')
-        
+
         UserSession.objects.filter(user=user, logout_time__isnull=True).update(logout_time=timezone.now())
-        
         session = UserSession.objects.create(user=user, ip_address=ip)
         
         return Response({

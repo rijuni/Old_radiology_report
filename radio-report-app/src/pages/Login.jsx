@@ -37,7 +37,7 @@ export default function Login() {
                 localStorage.setItem('userName', full);
                 navigate('/dashboard');
             } else {
-                setError(data.non_field_errors ? data.non_field_errors[0] : 'Invalid credentials. Please try again.');
+                setError(data.error || (data.non_field_errors ? data.non_field_errors[0] : 'Invalid credentials. Please try again.'));
             }
         } catch (err) {
             setError('Failed to connect to server. Please try again.');
