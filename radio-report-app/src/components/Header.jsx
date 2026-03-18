@@ -56,7 +56,7 @@ export default function Header() {
 
                 {/* Top-left corner logo */}
                 <div
-                    className="absolute top-0 left-0 h-14 flex items-center pl-2 cursor-pointer"
+                    className="absolute top-0 left-0 h-14 flex items-center pl-2.5 cursor-pointer"
                     onClick={() => navigate('/dashboard')}
                     title="Go to Dashboard"
                     style={{ transition: 'opacity 0.2s' }}
@@ -72,10 +72,10 @@ export default function Header() {
                     <img
                         src="/image/kims_logo.png"
                         alt="KIMS"
-                        className="h-9 w-auto rounded"
+                        className="h-10 w-auto rounded"
                         style={{
                             background: 'rgba(255,255,255,0.9)',
-                            padding: '2px 6px',
+                            padding: '3px 7px',
                             transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                         }}
                     />
