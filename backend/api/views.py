@@ -134,8 +134,9 @@ class CustomAuthToken(ObtainAuthToken):
                     'error': f'{attempts_left} attempts remaining'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-        user = serializer.validated_data['user']
-        token, created = Token.objects.get_or_create(user=user)
+        # One user - One session policy: Delete existing tokens to invalidate old sessions
+        Token.objects.filter(user=user).delete()
+        token = Token.objects.create(user=user)
         
         # Capture the true source IP (bypassing proxies/internal server IPs)
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')

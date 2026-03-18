@@ -7,15 +7,15 @@ export default function Header() {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
 
-    const userFullName = localStorage.getItem('userFullName') || 'User';
-    const employeeId = localStorage.getItem('employeeId') || '';
-    const isAdmin = localStorage.getItem('isAdmin') === 'true';
+    const userFullName = sessionStorage.getItem('userFullName') || 'User';
+    const employeeId = sessionStorage.getItem('employeeId') || '';
+    const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
     const initials = userFullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
     const handleLogout = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const session_id = localStorage.getItem('session_id');
+            const token = sessionStorage.getItem('token');
+            const session_id = sessionStorage.getItem('session_id');
             if (token) {
                 await fetch('/api/logout/', {
                     method: 'POST',
@@ -29,7 +29,7 @@ export default function Header() {
         } catch (err) {
             console.error("Logout notification failed:", err);
         }
-        localStorage.clear();
+        sessionStorage.clear();
         navigate('/login');
     };
 
@@ -46,13 +46,13 @@ export default function Header() {
         <header className="sticky top-0 z-50 w-full shadow-sm">
             {/* ── Main Nav ──────────────────────────────────────────────── */}
             <nav
+                className="w-full h-14 flex items-center justify-end px-4 relative"
                 style={{
-                    background: '#1e293b',
-                    borderBottom: '1px solid #0f172a',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                    background: 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)',
+                    borderBottom: '1.5px solid #2d6160',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)',
                 }}
             >
-                <div className="w-full h-14 flex items-center justify-end px-4 relative">
 
                     {/* Top-left corner logo */}
                     <div
@@ -88,29 +88,26 @@ export default function Header() {
                         {isAdmin && (
                             <button
                                 onClick={() => navigate('/admin-panel')}
-                                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200"
+                                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300"
                                 style={{
-                                    background: 'rgba(139,92,246,0.15)',
-                                    border: '1px solid rgba(139,92,246,0.3)',
-                                    color: '#c4b5fd',
-                                    transition: 'all 0.2s ease',
+                                    background: 'rgba(255,255,255,0.1)',
+                                    border: '1px solid rgba(255,255,255,0.2)',
+                                    color: '#ffffff',
                                 }}
                                 onMouseEnter={e => {
-                                    e.currentTarget.style.background = 'rgba(139,92,246,0.32)';
-                                    e.currentTarget.style.border = '1px solid rgba(139,92,246,0.6)';
-                                    e.currentTarget.style.color = '#ede9fe';
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.22)';
+                                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.4)';
                                     e.currentTarget.style.transform = 'translateY(-1px)';
-                                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(139,92,246,0.3)';
+                                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
                                 }}
                                 onMouseLeave={e => {
-                                    e.currentTarget.style.background = 'rgba(139,92,246,0.15)';
-                                    e.currentTarget.style.border = '1px solid rgba(139,92,246,0.3)';
-                                    e.currentTarget.style.color = '#c4b5fd';
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.2)';
                                     e.currentTarget.style.transform = 'none';
                                     e.currentTarget.style.boxShadow = 'none';
                                 }}
                             >
-                                <Shield size={13} /> Admin Panel
+                                <Shield size={13} strokeWidth={2.5} /> Admin Panel
                             </button>
                         )}
 
@@ -153,13 +150,14 @@ export default function Header() {
                                     {initials}
                                 </div>
                                 <div className="hidden sm:block text-left">
-                                    <p className="text-xs font-semibold text-white leading-none">{userFullName}</p>
-                                    <p className="text-xs leading-none mt-0.5" style={{ color: '#64748b' }}>{employeeId}</p>
+                                    <p className="text-xs font-bold text-white leading-none">{userFullName}</p>
+                                    <p className="text-[10px] leading-none mt-0.5 font-medium text-white/60">{employeeId}</p>
                                 </div>
                                 <ChevronDown
                                     size={14}
                                     style={{
-                                        color: '#64748b',
+                                        color: '#ffffff',
+                                        opacity: 0.7,
                                         transform: dropdownOpen ? 'rotate(180deg)' : 'none',
                                         transition: 'transform 0.2s',
                                     }}
@@ -214,7 +212,6 @@ export default function Header() {
                                     </button>
                                 </div>
                             )}
-                        </div>
                     </div>
                 </div>
             </nav>

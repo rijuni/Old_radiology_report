@@ -55,9 +55,9 @@ function StatCard({ icon: Icon, label, value, accent, primary }) {
         <div
             className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
             style={{
-                background: primary ? '#1e293b' : '#ffffff',
+                background: primary ? 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)' : '#ffffff',
                 border: primary ? 'none' : '1px solid #e2e8f0',
-                boxShadow: primary ? '0 4px 16px rgba(30,41,59,0.3)' : '0 1px 4px rgba(0,0,0,0.05)',
+                boxShadow: primary ? '0 10px 25px rgba(80, 175, 173, 0.35)' : '0 1px 4px rgba(0,0,0,0.05)',
             }}
         >
             <div
@@ -75,7 +75,7 @@ function StatCard({ icon: Icon, label, value, accent, primary }) {
                     {label}
                 </p>
                 <p className="text-2xl font-extrabold leading-none"
-                    style={{ color: primary ? '#fff' : '#1e293b', animation: 'countUp 0.4s ease-out' }}>
+                    style={{ color: primary ? '#fff' : '#0f172a', animation: 'countUp 0.4s ease-out' }}>
                     {value.toLocaleString()}
                 </p>
             </div>
@@ -110,6 +110,7 @@ function FilterSelect({ label, children, disabled, ...props }) {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
+    const today = new Date().toISOString().split('T')[0];
     const navigate = useNavigate();
     const [patients, setPatients] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -118,6 +119,7 @@ export default function Dashboard() {
     const [totalCount, setTotalCount] = useState(0);
     const [filtersExpanded, setFiltersExpanded] = useState(true);
     const [error, setError] = useState('');
+    const [sessionExpired, setSessionExpired] = useState(false);
     const [searchExecuted, setSearchExecuted] = useState(false);
     const [jumpPage, setJumpPage] = useState('');
     const [reportError, setReportError] = useState({});   // { [rowIdx]: message }
@@ -125,19 +127,22 @@ export default function Dashboard() {
     const [searchParams, setSearchParams] = useState({
         name: '', id: '', modality: '', study: '',
         serviceStatus: '', radiologist: '',
-        accessionNo: '', fromDate: '', toDate: '',
+        accessionNo: '', fromDate: today, toDate: today,
     });
 
     useEffect(() => {
-        if (!localStorage.getItem('token')) navigate('/login');
+        if (!sessionStorage.getItem('token')) navigate('/login');
     }, [navigate]);
 
-    useEffect(() => { fetchPatients({}, 1, true); }, []);
+    useEffect(() => { 
+        // Fetch overall counts (unfiltered) on initial landing
+        fetchPatients({}, 1, true); 
+    }, []);
 
     const fetchPatients = async (filters, page = 1, skipResults = false) => {
         setLoading(true); setError('');
         try {
-            const token = localStorage.getItem('token');
+            const token = sessionStorage.getItem('token');
             const query = new URLSearchParams();
             query.append('page', page);
             query.append('page_size', 15);
@@ -179,24 +184,36 @@ export default function Dashboard() {
                 headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' }
             });
 
-            if (res.status === 401) { localStorage.clear(); navigate('/login'); return; }
+            if (res.status === 401) { 
+                setSessionExpired(true);
+                sessionStorage.clear(); 
+                setTimeout(() => navigate('/login'), 4000);
+                return; 
+            }
             if (!res.ok) throw new Error('fetch failed');
 
             const data = await res.json();
             const results = data.results || [];
 
-            let fCount = 0, dCount = 0, nCount = 0, dTotal = 0;
+            let fCount = 0, dCount = 0, nCount = 0, dTotal = data.count || 0;
 
-            // Fetch aggregated stats for the full filtered dataset across all pages
-            const [finalCount, draftCount, newCount] = await Promise.all([
-                fetchStatusCount('2'),
-                fetchStatusCount('1'),
-                fetchStatusCount('0')
-            ]);
-            fCount = finalCount;
-            dCount = draftCount;
-            nCount = newCount;
-            dTotal = data.count || 0;
+            if (filters.serviceStatus) {
+                // If a specific status is selected, only that status should show its count.
+                // Others must be zero as they are excluded from this search.
+                if (filters.serviceStatus === 'Final') fCount = dTotal;
+                else if (filters.serviceStatus === 'Draft') dCount = dTotal;
+                else if (filters.serviceStatus === 'New') nCount = dTotal;
+            } else {
+                // No specific status filter — fetch overall stats for the current search (e.g. date range/ID)
+                const [finalCount, draftCount, newCount] = await Promise.all([
+                    fetchStatusCount('2'),
+                    fetchStatusCount('1'),
+                    fetchStatusCount('0')
+                ]);
+                fCount = finalCount;
+                dCount = draftCount;
+                nCount = newCount;
+            }
 
             if (!skipResults) {
                 setPatients(results);
@@ -243,9 +260,23 @@ export default function Dashboard() {
                 return false;
             }
         }
-        if (searchParams.fromDate && searchParams.toDate &&
-            new Date(searchParams.fromDate) > new Date(searchParams.toDate)) {
-            setError('From Date cannot be later than To Date.'); return false;
+        if (searchParams.fromDate && searchParams.toDate) {
+            const start = new Date(searchParams.fromDate);
+            const end = new Date(searchParams.toDate);
+            
+            if (start > end) {
+                setError('From Date cannot be later than To Date.');
+                return false;
+            }
+
+            const diffInMs = end - start;
+            const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+            
+            if (diffInDays > 7) {
+                const msg = 'Only a 7-day date range is allowed.';
+                setError(msg);
+                return false;
+            }
         }
         return true;
     };
@@ -282,15 +313,14 @@ export default function Dashboard() {
 
     const handleSearch = () => { if (validateSearch()) { setSearchExecuted(true); fetchPatients(searchParams, 1); } };
     const handleReset = () => {
-        const today = new Date().toISOString().split('T')[0];
         const d = { name: '', id: '', modality: '', study: '', serviceStatus: '', radiologist: '', accessionNo: '', fromDate: today, toDate: today };
         setSearchParams(d);
         setSearchExecuted(false);
-        fetchPatients(d, 1, true);
+        // Show overall counts on reset
+        fetchPatients({}, 1, true);
         setError('');
     };
 
-    const today = new Date().toISOString().split('T')[0];
     // Stats are derived from the FULL result set across all pages:
     //   - total  → totalCount returned by DRF (count of all matching records)
     //   - others → per-status counts fetched in parallel alongside the main request
@@ -427,12 +457,12 @@ export default function Dashboard() {
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-sm">
                                     <thead>
-                                        <tr style={{ background: '#334155' }}>
-                                            {TH.map(th => (
+                                        <tr style={{ background: 'linear-gradient(90deg, #50AFAD 0%, #3d8584 100%)', borderBottom: '1px solid #2d6160' }}>
+                                            {TH.map((th, i) => (
                                                 <th
                                                     key={th}
-                                                    className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider"
-                                                    style={{ color: '#ffffff', whiteSpace: 'nowrap' }}
+                                                    className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider"
+                                                    style={{ color: '#ffffff', textAlign: i >= 4 ? 'center' : 'left' }}
                                                 >
                                                     {th}
                                                 </th>
@@ -459,11 +489,11 @@ export default function Dashboard() {
                                                         {(currentPage - 1) * 15 + idx + 1}
                                                     </td>
                                                     {/* MRN */}
-                                                    <td className="px-3 py-1.5 font-mono text-xs font-bold" style={{ color: '#2563eb' }}>
+                                                    <td className="px-3 py-1.5 font-mono text-xs font-bold" style={{ color: '#50AFAD' }}>
                                                         {row.mrn}
                                                     </td>
                                                     {/* Name */}
-                                                    <td className="px-3 py-1.5 font-semibold text-sm" style={{ color: '#1e293b' }}>
+                                                    <td className="px-3 py-1.5 font-bold text-sm" style={{ color: '#50AFAD' }}>
                                                         {row.name}
                                                     </td>
                                                     {/* Study */}
@@ -488,24 +518,24 @@ export default function Dashboard() {
                                                         <StatusBadge status={row.service_status} />
                                                     </td>
                                                     {/* Action */}
-                                                    <td className="px-3 py-1.5">
+                                                    <td className="px-3 py-1.5 text-center">
                                                         {row.report_path ? (
                                                             <div className="flex flex-col items-center gap-1.5">
                                                                 <button
                                                                     onClick={() => handleViewReport(
-                                                                        `/api/reports/view/?path=${encodeURIComponent(row.report_path)}&token=${localStorage.getItem('token')}`,
+                                                                        `/api/reports/view/?path=${encodeURIComponent(row.report_path)}&token=${sessionStorage.getItem('token')}`,
                                                                         idx
                                                                     )}
                                                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all duration-150"
-                                                                    style={{ background: '#2563eb', boxShadow: '0 2px 6px rgba(37,99,235,0.3)', border: 'none', cursor: 'pointer' }}
-                                                                    onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
-                                                                    onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
+                                                                    style={{ background: '#334155', boxShadow: '0 2px 6px rgba(51,65,85,0.25)', border: 'none', cursor: 'pointer' }}
+                                                                    onMouseEnter={e => { e.currentTarget.style.background = '#50AFAD'; }}
+                                                                    onMouseLeave={e => { e.currentTarget.style.background = '#334155'; }}
                                                                 >
                                                                     <Eye size={12} /> View Report
                                                                 </button>
                                                                 {reportError[idx] && (
                                                                     <span
-                                                                        className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold"
+                                                                        className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold mx-auto"
                                                                         style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', animation: 'slideUp 0.2s ease-out', whiteSpace: 'nowrap' }}
                                                                     >
                                                                         <AlertTriangle size={10} /> {reportError[idx]}
@@ -513,7 +543,9 @@ export default function Dashboard() {
                                                                 )}
                                                             </div>
                                                         ) : (
-                                                            <span className="text-xs italic" style={{ color: '#cbd5e1' }}>No Report</span>
+                                                            <div className="flex justify-center">
+                                                                <span className="text-xs italic font-medium px-2 py-1 rounded bg-slate-50 border border-slate-100" style={{ color: '#94a3b8' }}>No Report</span>
+                                                            </div>
                                                         )}
                                                     </td>
                                                 </tr>
@@ -622,7 +654,7 @@ export default function Dashboard() {
                                                             borderRadius: '7px',
                                                             fontSize: '12px', fontWeight: p === currentPage ? 800 : 600,
                                                             border: p === currentPage ? 'none' : '1.5px solid #e2e8f0',
-                                                            background: p === currentPage ? '#1e293b' : '#fff',
+                                                            background: p === currentPage ? '#50AFAD' : '#fff',
                                                             color: p === currentPage ? '#fff' : '#475569',
                                                             cursor: (p === currentPage || loading) ? 'default' : 'pointer',
                                                             boxShadow: p === currentPage ? '0 2px 8px rgba(30,41,59,0.25)' : 'none',
@@ -706,6 +738,37 @@ export default function Dashboard() {
             </main>
 
             <Footer />
+
+            {/* ── Session Expired Modal ────────────────────────────────── */}
+            {sessionExpired && (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4" 
+                    style={{ background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(8px)' }}>
+                    <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div style={{ height: '6px', background: 'linear-gradient(90deg, #ef4444, #f87171)' }} />
+                        <div className="p-8 text-center">
+                            <div className="w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6 rotate-12" style={{ border: '2px solid #fee2e2' }}>
+                                <AlertTriangle size={40} className="text-red-500 -rotate-12" />
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-900 mb-3">Session Expired</h3>
+                            <p className="text-slate-500 text-sm mb-8 font-medium leading-relaxed">
+                                Your session has expired because you logged in from another device or browser.
+                            </p>
+                            <div className="flex flex-col gap-3">
+                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-slate-900" style={{ animation: 'progressBar 4s linear forwards' }} />
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Redirecting in 4 seconds...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <style>{`
+                        @keyframes progressBar { 
+                            from { width: 0%; } 
+                            to { width: 100%; } 
+                        }
+                    `}</style>
+                </div>
+            )}
         </div>
     );
 }

@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [formData, setFormData] = useState({ username: '', password: '' });
-    const [error, setError] = useState('');
+    const [error, setError] = useState(location.state?.message || '');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+
+    useEffect(() => {
+        if (location.state?.message) {
+            setError(location.state.message);
+            // Clear location state to prevent message reappearing on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -26,15 +35,15 @@ export default function Login() {
             });
             const data = await res.json();
             if (res.ok) {
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('session_id', data.session_id);
-                localStorage.setItem('isAuthenticated', 'true');
-                localStorage.setItem('userId', data.user_id);
-                localStorage.setItem('employeeId', data.username);
-                localStorage.setItem('isAdmin', data.is_staff);
+                sessionStorage.setItem('token', data.token);
+                sessionStorage.setItem('session_id', data.session_id);
+                sessionStorage.setItem('isAuthenticated', 'true');
+                sessionStorage.setItem('userId', data.user_id);
+                sessionStorage.setItem('employeeId', data.username);
+                sessionStorage.setItem('isAdmin', data.is_staff);
                 const full = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Doctor';
-                localStorage.setItem('userFullName', full);
-                localStorage.setItem('userName', full);
+                sessionStorage.setItem('userFullName', full);
+                sessionStorage.setItem('userName', full);
                 navigate('/dashboard');
             } else {
                 setError(data.error || (data.non_field_errors ? data.non_field_errors[0] : 'Invalid credentials. Please try again.'));
@@ -52,7 +61,7 @@ export default function Login() {
             {/* ── Left Panel — Slate ──────────────────────────────────── */}
             <div
                 className="hidden lg:flex lg:w-5/12 relative overflow-hidden flex-col justify-between"
-                style={{ background: '#1e293b' }}
+                style={{ background: 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)' }}
             >
                 {/* Background medical image */}
                 <img
@@ -152,7 +161,7 @@ export default function Login() {
                         }}
                     >
                         {/* Card top accent bar */}
-                        <div style={{ height: '4px', background: 'linear-gradient(90deg, #1e293b, #475569, #94a3b8)' }} />
+                        <div style={{ height: '4px', background: 'linear-gradient(90deg, #50AFAD, #b5e1e0)' }} />
 
                         <div className="p-8">
                             {/* Heading */}

@@ -4,8 +4,8 @@ export default function Footer() {
     return (
         <footer
             style={{
-                background: '#1e293b',
-                borderTop: '1px solid #0f172a',
+                background: '#0f172a',
+                borderTop: '1px solid rgba(255,255,255,0.05)',
                 marginTop: 'auto',
             }}
         >

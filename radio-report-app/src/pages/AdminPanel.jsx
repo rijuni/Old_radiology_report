@@ -65,6 +65,7 @@ export default function AdminPanel() {
     const [view, setView] = useState('users'); // 'users' or 'sessions'
     const [sessions, setSessions] = useState([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
+    const [sessionExpired, setSessionExpired] = useState(false); // Added state
 
     const [toast, setToast] = useState(null);
     const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
@@ -79,12 +80,18 @@ export default function AdminPanel() {
     const [newPassword, setNewPassword] = useState('');
     const [resetError, setResetError] = useState('');
 
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
 
     const fetchUsers = async () => {
         setLoading(true);
         try {
             const r = await fetch('/api/users/', { headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' } });
+            if (r.status === 401) {
+                setSessionExpired(true);
+                sessionStorage.clear();
+                setTimeout(() => navigate('/login'), 4000);
+                return;
+            }
             if (r.ok) setUsers(await r.json());
             else setError('Failed to fetch users');
         } catch { setError('Network error'); }
@@ -95,6 +102,12 @@ export default function AdminPanel() {
         setSessionsLoading(true);
         try {
             const r = await fetch('/api/sessions/', { headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' } });
+            if (r.status === 401) {
+                setSessionExpired(true);
+                sessionStorage.clear();
+                setTimeout(() => navigate('/login'), 4000);
+                return;
+            }
             if (r.ok) setSessions(await r.json());
             else showToast('Failed to fetch session logs', 'error');
         } catch { showToast('Network error while fetching sessions', 'error'); }
@@ -249,8 +262,9 @@ export default function AdminPanel() {
                                 onClick={() => setView('users')}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
                                 style={{
-                                    background: view === 'users' ? '#1e293b' : 'transparent',
+                                    background: view === 'users' ? 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)' : 'transparent',
                                     color: view === 'users' ? '#fff' : '#64748b',
+                                    boxShadow: view === 'users' ? '0 4px 10px rgba(80, 175, 173, 0.3)' : 'none',
                                 }}
                             >
                                 <User size={14} /> Users
@@ -259,8 +273,9 @@ export default function AdminPanel() {
                                 onClick={() => setView('sessions')}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
                                 style={{
-                                    background: view === 'sessions' ? '#1e293b' : 'transparent',
+                                    background: view === 'sessions' ? 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)' : 'transparent',
                                     color: view === 'sessions' ? '#fff' : '#64748b',
+                                    boxShadow: view === 'sessions' ? '0 4px 10px rgba(80, 175, 173, 0.3)' : 'none',
                                 }}
                             >
                                 <Clock size={14} /> Sessions
@@ -271,9 +286,9 @@ export default function AdminPanel() {
                             <button
                                 onClick={() => setShowCreateModal(true)}
                                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white transition-all duration-150"
-                                style={{ background: '#1e293b', boxShadow: '0 2px 8px rgba(30,41,59,0.25)' }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#0f172a'}
-                                onMouseLeave={e => e.currentTarget.style.background = '#1e293b'}
+                                style={{ background: 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)', boxShadow: '0 4px 12px rgba(80,175,173,0.3)' }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#3d8584'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)'}
                             >
                                 <Plus size={15} /> Create Account
                             </button>
@@ -297,12 +312,12 @@ export default function AdminPanel() {
                     {view === 'users' ? (
                         <table className="w-full text-sm">
                             <thead>
-                                <tr style={{ background: '#334155', borderBottom: '1px solid #475569' }}>
+                                <tr style={{ background: 'linear-gradient(90deg, #50AFAD 0%, #3d8584 100%)', borderBottom: '1px solid #2d6160' }}>
                                     {['User ID', 'Full Name', 'Role', 'Status', 'Actions'].map((h, i) => (
                                         <th
                                             key={h}
                                             className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider"
-                                            style={{ color: '#94a3b8', textAlign: i === 4 ? 'right' : 'left' }}
+                                            style={{ color: '#ffffff', textAlign: i === 4 ? 'right' : 'left' }}
                                         >
                                             {h}
                                         </th>
@@ -321,7 +336,7 @@ export default function AdminPanel() {
                                         onMouseEnter={e => e.currentTarget.style.background = '#f8f9ff'}
                                         onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f8fafc'}
                                     >
-                                        <td className="px-5 py-3.5 font-mono text-xs font-bold" style={{ color: '#2563eb' }}>
+                                        <td className="px-5 py-3.5 font-mono text-xs font-bold" style={{ color: '#50AFAD' }}>
                                             {user.username}
                                         </td>
                                         <td className="px-5 py-3.5 font-semibold" style={{ color: '#1e293b' }}>
@@ -372,9 +387,9 @@ export default function AdminPanel() {
                                                 <button
                                                     onClick={() => { setSelectedUser(user); setShowResetModal(true); }}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
-                                                    style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', color: '#2563eb' }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = '#dbeafe'}
-                                                    onMouseLeave={e => e.currentTarget.style.background = '#eff6ff'}
+                                                    style={{ background: '#f0fdfa', border: '1.5px solid #ccfbf1', color: '#50AFAD' }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = '#ccfbf1'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = '#f0fdfa'}
                                                 >
                                                     <Key size={11} /> Reset
                                                 </button>
@@ -397,12 +412,12 @@ export default function AdminPanel() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr style={{ background: '#334155', borderBottom: '1px solid #475569' }}>
+                                    <tr style={{ background: 'linear-gradient(90deg, #50AFAD 0%, #3d8584 100%)', borderBottom: '1px solid #2d6160' }}>
                                         {['User', 'IP Address', 'Login Time', 'Logout Time', 'Duration'].map((h, i) => (
                                             <th
                                                 key={h}
                                                 className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider"
-                                                style={{ color: '#94a3b8', textAlign: 'left' }}
+                                                style={{ color: '#ffffff', textAlign: 'left' }}
                                             >
                                                 {h}
                                             </th>
@@ -538,9 +553,9 @@ export default function AdminPanel() {
                             <button
                                 type="submit"
                                 className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-150"
-                                style={{ background: '#1e293b', boxShadow: '0 2px 8px rgba(30,41,59,0.2)' }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#0f172a'}
-                                onMouseLeave={e => e.currentTarget.style.background = '#1e293b'}
+                                style={{ background: 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)', boxShadow: '0 4px 12px rgba(80,175,173,0.3)' }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#3d8584'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)'}
                             >
                                 Create Account
                             </button>

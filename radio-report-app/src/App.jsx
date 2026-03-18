@@ -6,7 +6,7 @@ import AdminPanel from './pages/AdminPanel';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+  const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -16,8 +16,8 @@ const ProtectedRoute = ({ children }) => {
 
 // Admin Route Component
 const AdminRoute = ({ children }) => {
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-  const isAdmin = localStorage.getItem('isAdmin') === 'true';
+  const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
+  const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -29,6 +29,29 @@ const AdminRoute = ({ children }) => {
 };
 
 function App() {
+  useEffect(() => {
+    const handleTabClose = () => {
+      const token = sessionStorage.getItem('token');
+      const sessionId = sessionStorage.getItem('session_id');
+      
+      if (token && sessionId) {
+        // Use navigator.sendBeacon or fetch with keepalive to notify backend on close
+        fetch('/api/logout/', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Token ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ session_id: sessionId }),
+          keepalive: true
+        });
+      }
+    };
+
+    window.addEventListener('pagehide', handleTabClose);
+    return () => window.removeEventListener('pagehide', handleTabClose);
+  }, []);
+
   return (
     <Router>
       <Routes>

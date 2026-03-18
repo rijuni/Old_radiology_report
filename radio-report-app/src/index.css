@@ -10,7 +10,7 @@
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    color: #1e293b;
+    color: #475569;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -53,7 +53,7 @@
     border-radius: 0.5rem;
     background: #ffffff;
     border: 1.5px solid #e2e8f0;
-    color: #1e293b;
+    color: #50AFAD;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
     font-size: 0.875rem;
@@ -105,8 +105,8 @@
   }
 
   .btn-slate:hover {
-    background: #1e293b;
-    box-shadow: 0 4px 14px rgba(30, 41, 59, 0.3);
+    background: #50AFAD;
+    box-shadow: 0 4px 14px rgba(80, 175, 173, 0.35);
     transform: translateY(-1px);
   }
 
@@ -139,12 +139,12 @@
   .btn-outline:hover {
     background: #f8fafc;
     border-color: #cbd5e1;
-    color: #1e293b;
+    color: #50AFAD;
   }
 
   /* Aurora bg (login left panel) */
   .aurora-bg {
-    background: linear-gradient(-45deg, #1e293b, #0f2444, #1a3050, #0f172a, #1e293b);
+    background: linear-gradient(-45deg, #50AFAD, #3d8584, #50AFAD, #b5e1e0);
     background-size: 400% 400%;
     animation: aurora 12s ease infinite;
   }
