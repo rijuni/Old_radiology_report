@@ -19,7 +19,7 @@ export default function Header() {
             if (token) {
                 await fetch('/api/logout/', {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Authorization': `Token ${token}`,
                         'Content-Type': 'application/json'
                     },
@@ -54,164 +54,164 @@ export default function Header() {
                 }}
             >
 
-                    {/* Top-left corner logo */}
-                    <div
-                        className="absolute top-0 left-0 h-14 flex items-center pl-2 cursor-pointer"
-                        onClick={() => navigate('/dashboard')}
-                        title="Go to Dashboard"
-                        style={{ transition: 'opacity 0.2s' }}
-                        onMouseEnter={e => {
-                            e.currentTarget.querySelector('img').style.transform = 'scale(1.07)';
-                            e.currentTarget.querySelector('img').style.boxShadow = '0 0 14px rgba(255,255,255,0.25)';
+                {/* Top-left corner logo */}
+                <div
+                    className="absolute top-0 left-0 h-14 flex items-center pl-2 cursor-pointer"
+                    onClick={() => navigate('/dashboard')}
+                    title="Go to Dashboard"
+                    style={{ transition: 'opacity 0.2s' }}
+                    onMouseEnter={e => {
+                        e.currentTarget.querySelector('img').style.transform = 'scale(1.07)';
+                        e.currentTarget.querySelector('img').style.boxShadow = '0 0 14px rgba(255,255,255,0.25)';
+                    }}
+                    onMouseLeave={e => {
+                        e.currentTarget.querySelector('img').style.transform = 'scale(1)';
+                        e.currentTarget.querySelector('img').style.boxShadow = 'none';
+                    }}
+                >
+                    <img
+                        src="/image/kims_logo.png"
+                        alt="KIMS"
+                        className="h-9 w-auto rounded"
+                        style={{
+                            background: 'rgba(255,255,255,0.9)',
+                            padding: '2px 6px',
+                            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                         }}
-                        onMouseLeave={e => {
-                            e.currentTarget.querySelector('img').style.transform = 'scale(1)';
-                            e.currentTarget.querySelector('img').style.boxShadow = 'none';
-                        }}
-                    >
-                        <img
-                            src="/image/kims_logo.png"
-                            alt="KIMS"
-                            className="h-9 w-auto rounded"
+                    />
+                </div>
+
+                {/* Right — Admin + User dropdown */}
+                <div className="flex items-center gap-3">
+
+                    {/* Admin panel link */}
+                    {isAdmin && (
+                        <button
+                            onClick={() => navigate('/admin-panel')}
+                            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300"
                             style={{
-                                background: 'rgba(255,255,255,0.9)',
-                                padding: '2px 6px',
-                                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                background: 'rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                color: '#ffffff',
                             }}
-                        />
-                    </div>
+                            onMouseEnter={e => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.22)';
+                                e.currentTarget.style.border = '1px solid rgba(255,255,255,0.4)';
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+                            }}
+                            onMouseLeave={e => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.border = '1px solid rgba(255,255,255,0.2)';
+                                e.currentTarget.style.transform = 'none';
+                                e.currentTarget.style.boxShadow = 'none';
+                            }}
+                        >
+                            <Shield size={13} strokeWidth={2.5} /> Admin Panel
+                        </button>
+                    )}
 
-                    {/* Right — Admin + User dropdown */}
-                    <div className="flex items-center gap-3">
-
-                        {/* Admin panel link */}
-                        {isAdmin && (
-                            <button
-                                onClick={() => navigate('/admin-panel')}
-                                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300"
-                                style={{
-                                    background: 'rgba(255,255,255,0.1)',
-                                    border: '1px solid rgba(255,255,255,0.2)',
-                                    color: '#ffffff',
-                                }}
-                                onMouseEnter={e => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.22)';
-                                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.4)';
-                                    e.currentTarget.style.transform = 'translateY(-1px)';
-                                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
-                                }}
-                                onMouseLeave={e => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                    {/* User dropdown */}
+                    <div className="relative" ref={dropdownRef}>
+                        <button
+                            onClick={() => setDropdownOpen(p => !p)}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200"
+                            style={{
+                                background: dropdownOpen ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
+                                border: dropdownOpen ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(255,255,255,0.1)',
+                                transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={e => {
+                                if (!dropdownOpen) {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.13)';
                                     e.currentTarget.style.border = '1px solid rgba(255,255,255,0.2)';
-                                    e.currentTarget.style.transform = 'none';
+                                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.25)';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                    const avatar = e.currentTarget.querySelector('.user-avatar');
+                                    if (avatar) avatar.style.background = '#64748b';
+                                }
+                            }}
+                            onMouseLeave={e => {
+                                if (!dropdownOpen) {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)';
                                     e.currentTarget.style.boxShadow = 'none';
-                                }}
+                                    e.currentTarget.style.transform = 'none';
+                                    const avatar = e.currentTarget.querySelector('.user-avatar');
+                                    if (avatar) avatar.style.background = '#475569';
+                                }
+                            }}
+                        >
+                            {/* Avatar */}
+                            <div
+                                className="user-avatar w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
+                                style={{ background: '#475569', color: '#f1f5f9', transition: 'background 0.2s' }}
                             >
-                                <Shield size={13} strokeWidth={2.5} /> Admin Panel
-                            </button>
-                        )}
-
-                        {/* User dropdown */}
-                        <div className="relative" ref={dropdownRef}>
-                            <button
-                                onClick={() => setDropdownOpen(p => !p)}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200"
+                                {initials}
+                            </div>
+                            <div className="hidden sm:block text-left">
+                                <p className="text-xs font-bold text-white leading-none">{userFullName}</p>
+                                <p className="text-[10px] leading-none mt-0.5 font-medium text-white/60">{employeeId}</p>
+                            </div>
+                            <ChevronDown
+                                size={14}
                                 style={{
-                                    background: dropdownOpen ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
-                                    border: dropdownOpen ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(255,255,255,0.1)',
-                                    transition: 'all 0.2s ease',
+                                    color: '#ffffff',
+                                    opacity: 0.7,
+                                    transform: dropdownOpen ? 'rotate(180deg)' : 'none',
+                                    transition: 'transform 0.2s',
                                 }}
-                                onMouseEnter={e => {
-                                    if (!dropdownOpen) {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.13)';
-                                        e.currentTarget.style.border = '1px solid rgba(255,255,255,0.2)';
-                                        e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.25)';
-                                        e.currentTarget.style.transform = 'translateY(-1px)';
-                                        const avatar = e.currentTarget.querySelector('.user-avatar');
-                                        if (avatar) avatar.style.background = '#64748b';
-                                    }
-                                }}
-                                onMouseLeave={e => {
-                                    if (!dropdownOpen) {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                                        e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)';
-                                        e.currentTarget.style.boxShadow = 'none';
-                                        e.currentTarget.style.transform = 'none';
-                                        const avatar = e.currentTarget.querySelector('.user-avatar');
-                                        if (avatar) avatar.style.background = '#475569';
-                                    }
+                            />
+                        </button>
+
+                        {/* Dropdown menu */}
+                        {dropdownOpen && (
+                            <div
+                                className="absolute right-0 mt-2 w-52 rounded-xl overflow-hidden z-50"
+                                style={{
+                                    background: '#ffffff',
+                                    border: '1px solid #e2e8f0',
+                                    boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                                    animation: 'slideUp 0.15s ease-out',
                                 }}
                             >
-                                {/* Avatar */}
-                                <div
-                                    className="user-avatar w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
-                                    style={{ background: '#475569', color: '#f1f5f9', transition: 'background 0.2s' }}
-                                >
-                                    {initials}
-                                </div>
-                                <div className="hidden sm:block text-left">
-                                    <p className="text-xs font-bold text-white leading-none">{userFullName}</p>
-                                    <p className="text-[10px] leading-none mt-0.5 font-medium text-white/60">{employeeId}</p>
-                                </div>
-                                <ChevronDown
-                                    size={14}
-                                    style={{
-                                        color: '#ffffff',
-                                        opacity: 0.7,
-                                        transform: dropdownOpen ? 'rotate(180deg)' : 'none',
-                                        transition: 'transform 0.2s',
-                                    }}
-                                />
-                            </button>
-
-                            {/* Dropdown menu */}
-                            {dropdownOpen && (
-                                <div
-                                    className="absolute right-0 mt-2 w-52 rounded-xl overflow-hidden z-50"
-                                    style={{
-                                        background: '#ffffff',
-                                        border: '1px solid #e2e8f0',
-                                        boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                                        animation: 'slideUp 0.15s ease-out',
-                                    }}
-                                >
-                                    {/* User info header */}
-                                    <div className="px-4 py-3" style={{ borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
-                                        <p className="text-sm font-semibold" style={{ color: '#1e293b' }}>{userFullName}</p>
-                                        <p className="text-xs mt-0.5" style={{ color: '#94a3b8' }}>{employeeId}</p>
-                                        {isAdmin && (
-                                            <span
-                                                className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded text-xs font-semibold"
-                                                style={{ background: '#f3f0ff', color: '#7c3aed', border: '1px solid #e9d5ff' }}
-                                            >
-                                                <Shield size={10} /> Administrator
-                                            </span>
-                                        )}
-                                    </div>
-
+                                {/* User info header */}
+                                <div className="px-4 py-3" style={{ borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+                                    <p className="text-sm font-semibold" style={{ color: '#1e293b' }}>{userFullName}</p>
+                                    <p className="text-xs mt-0.5" style={{ color: '#94a3b8' }}>{employeeId}</p>
                                     {isAdmin && (
-                                        <button
-                                            onClick={() => { navigate('/admin-panel'); setDropdownOpen(false); }}
-                                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors"
-                                            style={{ color: '#7c3aed' }}
-                                            onMouseEnter={e => e.currentTarget.style.background = '#faf5ff'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        <span
+                                            className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded text-xs font-semibold"
+                                            style={{ background: '#f3f0ff', color: '#7c3aed', border: '1px solid #e9d5ff' }}
                                         >
-                                            <Shield size={14} /> Admin Panel
-                                        </button>
+                                            <Shield size={10} /> Administrator
+                                        </span>
                                     )}
+                                </div>
 
+                                {isAdmin && (
                                     <button
-                                        onClick={handleLogout}
+                                        onClick={() => { navigate('/admin-panel'); setDropdownOpen(false); }}
                                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors"
-                                        style={{ color: '#ef4444', borderTop: '1px solid #f1f5f9' }}
-                                        onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                                        style={{ color: '#7c3aed' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#faf5ff'}
                                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                     >
-                                        <LogOut size={14} /> Sign Out
+                                        <Shield size={14} /> Admin Panel
                                     </button>
-                                </div>
-                            )}
+                                )}
+
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors"
+                                    style={{ color: '#ef4444', borderTop: '1px solid #f1f5f9' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                    <LogOut size={14} /> Sign Out
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </nav>
@@ -229,7 +229,7 @@ export default function Header() {
                 >
                     <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
                     <p className="text-xs font-medium" style={{ color: '#92400e' }}>
-                        Only Old Radiology Report Available for Viewing (Jan,2022 - March,2025)
+                        Only Old Radiology Report Available for Viewing (April,2022 - March,2025)
                     </p>
                 </div>
 
