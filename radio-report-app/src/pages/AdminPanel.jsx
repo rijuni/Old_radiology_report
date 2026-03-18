@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Shield, Key, Plus, X, ChevronLeft, Trash2, AlertCircle, CheckCircle, Clock, Globe, List, RotateCw, Lock, Unlock } from 'lucide-react';
+import { User, Shield, Key, Plus, X, ChevronLeft, Trash2, AlertCircle, CheckCircle, Clock, Globe, List, RotateCw, Lock, Unlock, Search, Power } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -65,7 +65,8 @@ export default function AdminPanel() {
     const [view, setView] = useState('users'); // 'users' or 'sessions'
     const [sessions, setSessions] = useState([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
-    const [sessionExpired, setSessionExpired] = useState(false); // Added state
+    const [sessionExpired, setSessionExpired] = useState(false);
+    const [sessionFilters, setSessionFilters] = useState({ status: '', username: '', date: '' });
 
     const [toast, setToast] = useState(null);
     const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
@@ -101,7 +102,14 @@ export default function AdminPanel() {
     const fetchSessions = async () => {
         setSessionsLoading(true);
         try {
-            const r = await fetch('/api/sessions/', { headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' } });
+            const queryParams = new URLSearchParams();
+            if (sessionFilters.status) queryParams.append('status', sessionFilters.status);
+            if (sessionFilters.username) queryParams.append('username', sessionFilters.username);
+            if (sessionFilters.date) queryParams.append('date', sessionFilters.date);
+
+            const r = await fetch(`/api/sessions/?${queryParams.toString()}`, { 
+                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' } 
+            });
             if (r.status === 401) {
                 setSessionExpired(true);
                 sessionStorage.clear();
@@ -114,19 +122,40 @@ export default function AdminPanel() {
         finally { setSessionsLoading(false); }
     };
 
+    const handleKillSession = async (sessionId, username) => {
+        if (!window.confirm(`Terminate active session for "${username}"? They will be logged out immediately.`)) return;
+        try {
+            const r = await fetch(`/api/sessions/${sessionId}/kill/`, {
+                method: 'POST',
+                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' }
+            });
+            if (r.ok) {
+                showToast(`Session for ${username} terminated successfully`);
+                fetchSessions();
+            } else {
+                const d = await r.json();
+                showToast(d.error || 'Failed to terminate session', 'error');
+            }
+        } catch { showToast('Network error', 'error'); }
+    };
+
     useEffect(() => { 
         if (view === 'users') {
             fetchUsers();
             return;
         }
 
-        // Initial fetch for sessions
+        // Fetch sessions when view or filters change
         fetchSessions();
 
-        // Auto-refresh sessions every 30 seconds
-        const interval = setInterval(fetchSessions, 30000);
+        // Auto-refresh sessions every 30 seconds only if no specific filters are applied
+        const interval = setInterval(() => {
+            if (!sessionFilters.username && !sessionFilters.date && !sessionFilters.status) {
+                fetchSessions();
+            }
+        }, 30000);
         return () => clearInterval(interval);
-    }, [view]);
+    }, [view, sessionFilters]);
 
     const handleCreateUser = async (e) => {
         e.preventDefault(); setCreateError('');
@@ -304,6 +333,55 @@ export default function AdminPanel() {
                     </div>
                 )}
 
+                {/* Session Filters */}
+                {view === 'sessions' && (
+                    <div className="flex flex-wrap items-center gap-4 p-4 mb-5 rounded-2xl bg-white border border-slate-200 shadow-sm" style={{ animation: 'slideUp 0.3s ease-out' }}>
+                        <div className="flex flex-col gap-1.5 min-w-[140px]">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Filter Status</label>
+                            <select
+                                value={sessionFilters.status}
+                                onChange={e => setSessionFilters({ ...sessionFilters, status: e.target.value })}
+                                className="w-full px-3 py-2 rounded-lg text-xs font-bold bg-slate-50 border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all appearance-none cursor-pointer"
+                            >
+                                <option value="">All Sessions</option>
+                                <option value="Active">🔴 Online / Active</option>
+                                <option value="Inactive">⚪ Disconnected</option>
+                            </select>
+                        </div>
+                        <div className="flex flex-col gap-1.5 min-w-[180px]">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Search User ID</label>
+                            <div className="relative">
+                                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Username..."
+                                    value={sessionFilters.username}
+                                    onChange={e => setSessionFilters({ ...sessionFilters, username: e.target.value })}
+                                    className="w-full pl-8 pr-3 py-2 rounded-lg text-xs font-bold bg-slate-50 border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Session Date</label>
+                            <input
+                                type="date"
+                                value={sessionFilters.date}
+                                onChange={e => setSessionFilters({ ...sessionFilters, date: e.target.value })}
+                                className="px-3 py-2 rounded-lg text-xs font-bold bg-slate-50 border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer"
+                            />
+                        </div>
+                        <div className="flex-1 flex justify-end items-end h-[50px]">
+                             <button
+                                onClick={() => setSessionFilters({ status: '', username: '', date: '' })}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                                style={{ visibility: (sessionFilters.status || sessionFilters.username || sessionFilters.date) ? 'visible' : 'hidden' }}
+                            >
+                                <X size={14} /> Clear
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Content Table */}
                 <div
                     className="rounded-2xl overflow-hidden"
@@ -413,11 +491,11 @@ export default function AdminPanel() {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr style={{ background: 'linear-gradient(90deg, #50AFAD 0%, #3d8584 100%)', borderBottom: '1px solid #2d6160' }}>
-                                        {['User', 'IP Address', 'Login Time', 'Logout Time', 'Duration'].map((h, i) => (
+                                        {['User', 'IP Address', 'Login Time', 'Logout Time', 'Duration', 'Control'].map((h, i) => (
                                             <th
                                                 key={h}
                                                 className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider"
-                                                style={{ color: '#ffffff', textAlign: 'left' }}
+                                                style={{ color: '#ffffff', textAlign: i === 5 ? 'right' : 'left' }}
                                             >
                                                 {h}
                                             </th>
@@ -447,7 +525,7 @@ export default function AdminPanel() {
                                             <td className="px-5 py-3.5">
                                                 <div className="flex flex-col">
                                                     <span className="font-bold text-slate-800">{session.full_name}</span>
-                                                    <span className="text-xs font-mono text-blue-600">{session.username}</span>
+                                                    <span className="text-xs font-mono" style={{ color: '#50AFAD' }}>{session.username}</span>
                                                 </div>
                                             </td>
                                             <td className="px-5 py-3.5 font-mono text-xs text-slate-500">
@@ -477,6 +555,17 @@ export default function AdminPanel() {
                                                     <Clock size={11} />
                                                     {session.duration_str}
                                                 </span>
+                                            </td>
+                                            <td className="px-5 py-3.5 text-right">
+                                                {!session.logout_time && (
+                                                    <button
+                                                        onClick={() => handleKillSession(session.id, session.username)}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
+                                                        title="Force Logout"
+                                                    >
+                                                        <Power size={12} /> Terminate
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}

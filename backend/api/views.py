@@ -232,7 +232,43 @@ class LogoutView(APIView):
         
         return Response({"status": "logged out"})
 
-class SessionViewSet(viewsets.ReadOnlyModelViewSet):
+class SessionViewSet(viewsets.ModelViewSet):
     queryset = UserSession.objects.all().order_by('-login_time')
     serializer_class = UserSessionSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        status_filter = self.request.query_params.get('status')
+        username = self.request.query_params.get('username')
+        login_date = self.request.query_params.get('date')
+
+        if status_filter == 'Active':
+            queryset = queryset.filter(logout_time__isnull=True)
+        elif status_filter == 'Inactive':
+            queryset = queryset.filter(logout_time__isnull=False)
+        
+        if username:
+            queryset = queryset.filter(user__username__icontains=username)
+        
+        if login_date:
+            queryset = queryset.filter(login_time__date=login_date)
+
+        return queryset
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminUser])
+    def kill(self, request, pk=None):
+        session = self.get_object()
+        if session.logout_time:
+            return Response({'error': 'Session is already inactive'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Mark as logged out
+        session.logout_time = timezone.now()
+        session.save()
+        
+        # Kill the token to force immediate logout (One session - One user logic)
+        Token.objects.filter(user=session.user).delete()
+        
+        return Response({'status': 'Session terminated'})
+
