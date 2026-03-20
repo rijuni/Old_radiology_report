@@ -5,6 +5,7 @@ import { LogOut, ChevronDown, Shield, User, AlertTriangle } from 'lucide-react';
 export default function Header() {
     const navigate = useNavigate();
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const dropdownRef = useRef(null);
 
     const userFullName = sessionStorage.getItem('userFullName') || 'User';
@@ -13,6 +14,7 @@ export default function Header() {
     const initials = userFullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
     const handleLogout = async () => {
+        setIsLoggingOut(true);
         try {
             const token = sessionStorage.getItem('token');
             const session_id = sessionStorage.getItem('session_id');
@@ -30,6 +32,7 @@ export default function Header() {
             console.error("Logout notification failed:", err);
         }
         sessionStorage.clear();
+        setIsLoggingOut(false);
         navigate('/login');
     };
 
@@ -203,12 +206,25 @@ export default function Header() {
 
                                 <button
                                     onClick={handleLogout}
+                                    disabled={isLoggingOut}
                                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors"
-                                    style={{ color: '#ef4444', borderTop: '1px solid #f1f5f9' }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    style={{ color: '#ef4444', borderTop: '1px solid #f1f5f9', opacity: isLoggingOut ? 0.7 : 1, cursor: isLoggingOut ? 'not-allowed' : 'pointer' }}
+                                    onMouseEnter={e => { if (!isLoggingOut) e.currentTarget.style.background = '#fef2f2' }}
+                                    onMouseLeave={e => { if (!isLoggingOut) e.currentTarget.style.background = 'transparent' }}
                                 >
-                                    <LogOut size={14} /> Sign Out
+                                    {isLoggingOut ? (
+                                        <>
+                                            <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                            </svg>
+                                            Signing Out...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <LogOut size={14} /> Sign Out
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         )}

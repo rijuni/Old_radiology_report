@@ -134,9 +134,9 @@ export default function Dashboard() {
         if (!sessionStorage.getItem('token')) navigate('/login');
     }, [navigate]);
 
-    useEffect(() => { 
+    useEffect(() => {
         // Fetch overall counts (unfiltered) on initial landing
-        fetchPatients({}, 1, true); 
+        fetchPatients({}, 1, true);
     }, []);
 
     const fetchPatients = async (filters, page = 1, skipResults = false) => {
@@ -184,11 +184,11 @@ export default function Dashboard() {
                 headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' }
             });
 
-            if (res.status === 401) { 
+            if (res.status === 401) {
                 setSessionExpired(true);
-                sessionStorage.clear(); 
+                sessionStorage.clear();
                 setTimeout(() => navigate('/login'), 4000);
-                return; 
+                return;
             }
             if (!res.ok) throw new Error('fetch failed');
 
@@ -263,7 +263,7 @@ export default function Dashboard() {
         if (searchParams.fromDate && searchParams.toDate) {
             const start = new Date(searchParams.fromDate);
             const end = new Date(searchParams.toDate);
-            
+
             if (start > end) {
                 setError('From Date cannot be later than To Date.');
                 return false;
@@ -271,7 +271,7 @@ export default function Dashboard() {
 
             const diffInMs = end - start;
             const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
-            
+
             if (diffInDays > 7) {
                 const msg = 'Only a 7-day date range is allowed.';
                 setError(msg);
@@ -340,7 +340,18 @@ export default function Dashboard() {
             <main className="flex-1 pb-8 px-3 md:px-5 pt-3" style={{ animation: 'fadeIn 0.4s ease-out' }}>
 
                 {/* ── Stats Row ────────────────────────────────────────── */}
-                {!loading && (
+                {loading ? (
+                    <div
+                        className="sticky z-40 pt-1 pb-3 -mt-1 flex items-center justify-center gap-3"
+                        style={{ top: '86px', height: '84px', background: '#f1f5f9', animation: 'fadeIn 0.2s ease-out', borderBottom: '1px solid transparent' }}
+                    >
+                        <svg className="animate-spin w-5 h-5 flex-shrink-0" style={{ color: '#50AFAD' }} fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        <span className="text-sm font-bold text-slate-500 tracking-widest">Syncing...</span>
+                    </div>
+                ) : (
                     <div
                         className="sticky z-40 pt-1 pb-3 -mt-1"
                         style={{ top: '86px', background: '#f1f5f9', animation: 'slideUp 0.35s ease-out' }}
@@ -741,7 +752,7 @@ export default function Dashboard() {
 
             {/* ── Session Expired Modal ────────────────────────────────── */}
             {sessionExpired && (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4" 
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
                     style={{ background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(8px)' }}>
                     <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                         <div style={{ height: '6px', background: 'linear-gradient(90deg, #ef4444, #f87171)' }} />

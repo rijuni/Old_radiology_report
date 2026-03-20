@@ -48,7 +48,7 @@ export default function Login() {
             } else {
                 setError(data.error || (data.non_field_errors ? data.non_field_errors[0] : 'Invalid credentials. Please try again.'));
             }
-        } catch (err) {
+        } catch {
             setError('Failed to connect to server. Please try again.');
         } finally {
             setLoading(false);
@@ -255,10 +255,10 @@ export default function Login() {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                             </svg>
-                                            Authenticating...
+                                            Logging in...
                                         </>
                                     ) : (
-                                        <>Sign In <ArrowRight size={17} /></>
+                                        <>Log In <ArrowRight size={17} /></>
                                     )}
                                 </button>
                             </form>

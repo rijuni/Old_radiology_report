@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Shield, Key, Plus, X, ChevronLeft, Trash2, AlertCircle, CheckCircle, Clock, Globe, List, RotateCw, Lock, Unlock, Search, Power } from 'lucide-react';
+import { User, Shield, Key, Plus, X, ChevronLeft, Trash2, AlertCircle, CheckCircle, Clock, Globe, List, RotateCw, Lock, Unlock, Search, Power, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -65,6 +65,9 @@ export default function AdminPanel() {
     const [view, setView] = useState('users'); // 'users' or 'sessions'
     const [sessions, setSessions] = useState([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
+    const [sessionsPage, setSessionsPage] = useState(1);
+    const [sessionsTotalPages, setSessionsTotalPages] = useState(1);
+    const [sessionsTotal, setSessionsTotal] = useState(0);
     const [sessionExpired, setSessionExpired] = useState(false);
     const [sessionFilters, setSessionFilters] = useState({ status: '', username: '', date: '' });
 
@@ -75,6 +78,8 @@ export default function AdminPanel() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newUser, setNewUser] = useState({ username: '', password: '', first_name: '', last_name: '', is_staff: false });
     const [createError, setCreateError] = useState('');
+    const [isCreating, setIsCreating] = useState(false);
+    const [removingUserId, setRemovingUserId] = useState(null);
 
     const [showResetModal, setShowResetModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
@@ -99,10 +104,11 @@ export default function AdminPanel() {
         finally { setLoading(false); }
     };
 
-    const fetchSessions = async () => {
+    const fetchSessions = async (page = sessionsPage) => {
         setSessionsLoading(true);
         try {
             const queryParams = new URLSearchParams();
+            queryParams.append('page', page);
             if (sessionFilters.status) queryParams.append('status', sessionFilters.status);
             if (sessionFilters.username) queryParams.append('username', sessionFilters.username);
             if (sessionFilters.date) queryParams.append('date', sessionFilters.date);
@@ -116,7 +122,13 @@ export default function AdminPanel() {
                 setTimeout(() => navigate('/login'), 4000);
                 return;
             }
-            if (r.ok) setSessions(await r.json());
+            if (r.ok) {
+                const data = await r.json();
+                setSessions(data.results || []);
+                setSessionsTotal(data.count || 0);
+                setSessionsTotalPages(Math.ceil((data.count || 0) / 15) || 1);
+                setSessionsPage(page);
+            }
             else showToast('Failed to fetch session logs', 'error');
         } catch { showToast('Network error while fetching sessions', 'error'); }
         finally { setSessionsLoading(false); }
@@ -139,26 +151,44 @@ export default function AdminPanel() {
         } catch { showToast('Network error', 'error'); }
     };
 
+    const handleExportSessions = () => {
+        const queryParams = new URLSearchParams();
+        queryParams.append('export', 'true');
+        if (sessionFilters.status) queryParams.append('status', sessionFilters.status);
+        if (sessionFilters.username) queryParams.append('username', sessionFilters.username);
+        if (sessionFilters.date) queryParams.append('date', sessionFilters.date);
+        
+        const url = `/api/sessions/?${queryParams.toString()}`;
+        fetch(url, { headers: { 'Authorization': `Token ${token}` } })
+            .then(res => res.blob())
+            .then(blob => {
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const dlAnchor = document.createElement('a');
+                dlAnchor.href = downloadUrl;
+                dlAnchor.download = 'sessions_export.csv';
+                dlAnchor.click();
+            })
+            .catch(() => showToast('Failed to export data', 'error'));
+    };
+
     useEffect(() => { 
         if (view === 'users') {
             fetchUsers();
             return;
         }
 
-        // Fetch sessions when view or filters change
-        fetchSessions();
+        fetchSessions(1);
 
-        // Auto-refresh sessions every 30 seconds only if no specific filters are applied
         const interval = setInterval(() => {
             if (!sessionFilters.username && !sessionFilters.date && !sessionFilters.status) {
-                fetchSessions();
+                fetchSessions(sessionsPage);
             }
         }, 30000);
         return () => clearInterval(interval);
     }, [view, sessionFilters]);
 
     const handleCreateUser = async (e) => {
-        e.preventDefault(); setCreateError('');
+        e.preventDefault(); setCreateError(''); setIsCreating(true);
         try {
             const r = await fetch('/api/users/', {
                 method: 'POST',
@@ -169,11 +199,13 @@ export default function AdminPanel() {
                 setShowCreateModal(false);
                 setNewUser({ username: '', password: '', first_name: '', last_name: '', is_staff: false });
                 fetchUsers();
+                showToast('ID created successfully.');
             } else {
                 const d = await r.json();
                 setCreateError(d.username ? `Username: ${d.username[0]}` : 'Failed to create user');
             }
         } catch { setCreateError('Network error'); }
+        finally { setIsCreating(false); }
     };
 
     const handleResetPassword = async (e) => {
@@ -192,12 +224,16 @@ export default function AdminPanel() {
     };
 
     const handleDeleteUser = async (userId, username) => {
-        if (!window.confirm(`Remove user "${username}"? This cannot be undone.`)) return;
+        setRemovingUserId(userId);
         try {
             const r = await fetch(`/api/users/${userId}/`, { method: 'DELETE', headers: { 'Authorization': `Token ${token}` } });
-            if (r.ok) fetchUsers();
+            if (r.ok) {
+                fetchUsers();
+                showToast("User removed successfully.");
+            }
             else setError('Failed to delete user');
         } catch { setError('Network error'); }
+        finally { setRemovingUserId(null); }
     };
 
     const handleToggleStatus = async (user) => {
@@ -265,24 +301,30 @@ export default function AdminPanel() {
                     </div>
                     
                     <div className="flex items-center gap-3">
-                        {/* Refresh Button for Sessions */}
+                        {/* Session Actions */}
                         {view === 'sessions' && (
-                            <button
-                                onClick={fetchSessions}
-                                disabled={sessionsLoading}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                                style={{ 
-                                    background: '#fff', 
-                                    border: '1.5px solid #e2e8f0', 
-                                    color: '#64748b',
-                                    opacity: sessionsLoading ? 0.7 : 1
-                                }}
-                                onMouseEnter={e => !sessionsLoading && (e.currentTarget.style.background = '#f8fafc')}
-                                onMouseLeave={e => !sessionsLoading && (e.currentTarget.style.background = '#fff')}
-                            >
-                                <RotateCw size={14} className={sessionsLoading ? 'animate-spin' : ''} />
-                                {sessionsLoading ? 'Refreshing...' : 'Refresh'}
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleExportSessions}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                                    style={{ background: '#ecfdf5', color: '#059669', border: '1.5px solid #d1fae5' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#d1fae5'}
+                                    onMouseLeave={e => e.currentTarget.style.background = '#ecfdf5'}
+                                >
+                                    <Download size={13} /> Export Excel
+                                </button>
+                                <button
+                                    onClick={() => fetchSessions(sessionsPage)}
+                                    disabled={sessionsLoading}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                                    style={{ background: '#fff', border: '1.5px solid #e2e8f0', color: '#64748b', opacity: sessionsLoading ? 0.7 : 1 }}
+                                    onMouseEnter={e => !sessionsLoading && (e.currentTarget.style.background = '#f8fafc')}
+                                    onMouseLeave={e => !sessionsLoading && (e.currentTarget.style.background = '#fff')}
+                                >
+                                    <RotateCw size={13} className={sessionsLoading ? 'animate-spin' : ''} />
+                                    {sessionsLoading ? 'Refreshing...' : 'Refresh'}
+                                </button>
+                            </div>
                         )}
 
                         {/* Tab Switcher */}
@@ -473,12 +515,25 @@ export default function AdminPanel() {
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteUser(user.id, user.username)}
+                                                    disabled={removingUserId === user.id}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
-                                                    style={{ background: '#fef2f2', border: '1.5px solid #fecaca', color: '#ef4444' }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'}
-                                                    onMouseLeave={e => e.currentTarget.style.background = '#fef2f2'}
+                                                    style={{ background: '#fef2f2', border: '1.5px solid #fecaca', color: '#ef4444', opacity: removingUserId === user.id ? 0.7 : 1, cursor: removingUserId === user.id ? 'not-allowed' : 'pointer' }}
+                                                    onMouseEnter={e => { if (removingUserId !== user.id) e.currentTarget.style.background = '#fee2e2' }}
+                                                    onMouseLeave={e => { if (removingUserId !== user.id) e.currentTarget.style.background = '#fef2f2' }}
                                                 >
-                                                    <Trash2 size={11} /> Remove
+                                                    {removingUserId === user.id ? (
+                                                        <>
+                                                            <svg className="animate-spin" style={{ width: '13px', height: '13px' }} fill="none" viewBox="0 0 24 24">
+                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                            </svg>
+                                                            Removing
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Trash2 size={11} /> Remove
+                                                        </>
+                                                    )}
                                                 </button>
                                             </div>
                                         </td>
@@ -571,6 +626,19 @@ export default function AdminPanel() {
                                     ))}
                                 </tbody>
                             </table>
+                            {sessionsTotalPages > 1 && (
+                                <div style={{ borderTop: '1px solid #e2e8f0', background: '#f8fafc', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>
+                                        <span style={{ fontWeight: 700, color: '#1e293b' }}>{sessionsTotal.toLocaleString()}</span> records
+                                        {' '}·{' '}
+                                        Page <span style={{ fontWeight: 700, color: '#334155' }}>{sessionsPage}</span> / <span style={{ fontWeight: 700, color: '#334155' }}>{sessionsTotalPages}</span>
+                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <button onClick={() => fetchSessions(sessionsPage - 1)} disabled={sessionsPage === 1 || sessionsLoading} style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 'bold', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', color: sessionsPage === 1 ? '#94a3b8' : '#334155', cursor: sessionsPage === 1 ? 'not-allowed' : 'pointer', opacity: (sessionsPage === 1 || sessionsLoading) ? 0.6 : 1 }}>Prev</button>
+                                        <button onClick={() => fetchSessions(sessionsPage + 1)} disabled={sessionsPage === sessionsTotalPages || sessionsLoading} style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 'bold', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', color: sessionsPage === sessionsTotalPages ? '#94a3b8' : '#334155', cursor: sessionsPage === sessionsTotalPages ? 'not-allowed' : 'pointer', opacity: (sessionsPage === sessionsTotalPages || sessionsLoading) ? 0.6 : 1 }}>Next</button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -641,12 +709,21 @@ export default function AdminPanel() {
 
                             <button
                                 type="submit"
-                                className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-150"
-                                style={{ background: 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)', boxShadow: '0 4px 12px rgba(80,175,173,0.3)' }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#3d8584'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)'}
+                                disabled={isCreating}
+                                className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-150 flex items-center justify-center gap-2"
+                                style={{ background: 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)', boxShadow: '0 4px 12px rgba(80,175,173,0.3)', opacity: isCreating ? 0.7 : 1, cursor: isCreating ? 'not-allowed' : 'pointer' }}
+                                onMouseEnter={e => { if (!isCreating) e.currentTarget.style.background = '#3d8584' }}
+                                onMouseLeave={e => { if (!isCreating) e.currentTarget.style.background = 'linear-gradient(135deg, #50AFAD 0%, #3d8584 100%)' }}
                             >
-                                Create Account
+                                {isCreating ? (
+                                    <>
+                                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        Creating...
+                                    </>
+                                ) : 'Create Account'}
                             </button>
                         </form>
                     </div>

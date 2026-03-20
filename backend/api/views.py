@@ -1,4 +1,4 @@
-from rest_framework import viewsets, generics, permissions, status
+from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
@@ -16,6 +16,11 @@ from .documents import PatientDocument
 
 class PatientPagination(PageNumberPagination):
     page_size = 100
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
+
+class SessionPagination(PageNumberPagination):
+    page_size = 15
     page_size_query_param = 'page_size'
     max_page_size = 1000
 
@@ -297,6 +302,43 @@ class SessionViewSet(viewsets.ModelViewSet):
     queryset = UserSession.objects.all().order_by('-login_time')
     serializer_class = UserSessionSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    pagination_class = SessionPagination
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        if request.query_params.get('export') == 'true':
+            import csv
+            from django.http import HttpResponse
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="sessions.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['User', 'IP Address', 'Login Time', 'Logout Time', 'Duration'])
+            for session in queryset:
+                duration_str = session.duration
+                if duration_str:
+                    total_seconds = int(duration_str.total_seconds())
+                    hours, remainder = divmod(total_seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    parts = []
+                    if hours > 0: parts.append(f"{hours}h")
+                    if minutes > 0: parts.append(f"{minutes}m")
+                    if seconds > 0 or not parts: parts.append(f"{seconds}s")
+                    duration_formatted = " ".join(parts)
+                else:
+                    duration_formatted = "Active"
+                
+                login_str = session.login_time.strftime("%Y-%m-%d %H:%M:%S")
+                logout_str = session.logout_time.strftime("%Y-%m-%d %H:%M:%S") if session.logout_time else "Online"
+                writer.writerow([session.user.username, session.ip_address or 'Unknown', login_str, logout_str, duration_formatted])
+            return response
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_queryset(self):
         queryset = super().get_queryset()
