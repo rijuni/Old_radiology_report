@@ -3,3 +3,5 @@ djangorestframework
 django-cors-headers
 django-filter
 mysqlclient
+django-elasticsearch-dsl
+elasticsearch

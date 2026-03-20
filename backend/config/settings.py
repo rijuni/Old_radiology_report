@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django_filters',
     # Local
     'api',
+    'django_elasticsearch_dsl',
 ]
 
 MIDDLEWARE = [
@@ -150,4 +151,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173", # Frontend URL
     "http://localhost:3000",
 ]
+# Elasticsearch Configuration
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': 'http://localhost:9200'
+    },
+}
 

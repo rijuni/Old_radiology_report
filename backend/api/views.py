@@ -12,6 +12,7 @@ from django.utils import timezone
 import os
 from django.conf import settings
 from django.http import FileResponse, Http404
+from .documents import PatientDocument
 
 class PatientPagination(PageNumberPagination):
     page_size = 100
@@ -32,30 +33,90 @@ class PatientViewSet(viewsets.ModelViewSet):
     }
     search_fields = ['name', 'mrn', 'accession_no']
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
+    def list(self, request, *args, **kwargs):
+        # We intercept DRF's default listing so Elasticsearch can instantly count all 767,000+ records!
+        params = request.query_params
         
-        # Custom filtering for name, id(mrn), accessionNo, study, dates
-        name = self.request.query_params.get('name')
-        mrn = self.request.query_params.get('id')  # Frontend sends 'id' for MRN
-        accession_no = self.request.query_params.get('accessionNo')
-        study = self.request.query_params.get('study')  # Study Description
-        from_date = self.request.query_params.get('fromDate')
-        to_date = self.request.query_params.get('toDate')
+        name = params.get('name')
+        mrn = params.get('id')  # Frontend sends 'id' for MRN
+        accession_no = params.get('accessionNo')
+        study = params.get('study')
+        from_date = params.get('fromDate')
+        to_date = params.get('toDate')
+        modality = params.get('modality')
+        service_status = params.get('service_status')
+        patient_type = params.get('patient_type')
+        radiologist = params.get('radiologist')
+        
+        try:
+            s = PatientDocument.search()
+            
+            # Apply all filtering directly via ES instead of MySQL
+            if name: s = s.query("match", name=name)
+            if mrn: s = s.query("match", mrn=mrn)
+            if accession_no: s = s.query("match", accession_no=accession_no)
+            if study: s = s.query("match", study_description=study)
+            if modality: s = s.query("match", modality=modality)
+            if service_status: s = s.query("match", service_status=service_status)
+            if patient_type: s = s.query("match", patient_type=patient_type)
+            if radiologist: s = s.query("match", radiologist=radiologist)
 
-        if name:
-            queryset = queryset.filter(name__icontains=name)
-        if mrn:
-            queryset = queryset.filter(mrn__icontains=mrn)
-        if accession_no:
-            queryset = queryset.filter(accession_no__icontains=accession_no)
-        if study:
-            queryset = queryset.filter(study_description__icontains=study)
+            # Date filtering
+            if from_date or to_date:
+                date_filter = {}
+                if from_date: date_filter['gte'] = from_date
+                if to_date: date_filter['lte'] = to_date
+                s = s.filter("range", exam_date=date_filter)
+
+            # Sort by exam date descending
+            s = s.sort('-exam_date')
+            
+            # Execute lightning-fast Elasticsearch aggregate count
+            total_count = s.count()
+
+            # Execute localized ES pagination, bypassing MySQL limit overhead
+            page = int(params.get('page', 1))
+            page_size = int(params.get('page_size', self.pagination_class.page_size))
+            start = (page - 1) * page_size
+            end = start + page_size
+            
+            # Slice before resolving query so we only transfer tiny 15-row DB hits
+            s = s[start:end]
+            
+            # Map back to Django ordered models
+            queryset = s.to_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            
+            return Response({
+                'count': total_count,
+                'next': None,     # Optionally construct next URL string if needed
+                'previous': None, 
+                'results': serializer.data
+            })
+            
+        except Exception as e:
+            print(f"Elasticsearch interception failed: {e}. Falling back to DB list...")
+            # Automatically reverts to classic DB functionality (slower, but safer)
+            return super().list(request, *args, **kwargs)
+
+    def get_queryset(self):
+        # Dedicated fallback DB filtering for when Elasticsearch is unavailable
+        queryset = super().get_queryset()
+        params = self.request.query_params
         
-        if from_date:
-            queryset = queryset.filter(exam_date__gte=from_date)
-        if to_date:
-            queryset = queryset.filter(exam_date__lte=to_date)
+        name = params.get('name')
+        mrn = params.get('id')
+        accession_no = params.get('accessionNo')
+        study = params.get('study')
+        from_date = params.get('fromDate')
+        to_date = params.get('toDate')
+
+        if name: queryset = queryset.filter(name__icontains=name)
+        if mrn: queryset = queryset.filter(mrn__icontains=mrn)
+        if accession_no: queryset = queryset.filter(accession_no__icontains=accession_no)
+        if study: queryset = queryset.filter(study_description__icontains=study)
+        if from_date: queryset = queryset.filter(exam_date__gte=from_date)
+        if to_date: queryset = queryset.filter(exam_date__lte=to_date)
 
         return queryset
 
