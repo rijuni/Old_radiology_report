@@ -1,7 +1,23 @@
-django
-djangorestframework
-django-cors-headers
-django-filter
-mysqlclient
-django-elasticsearch-dsl
-elasticsearch
+# ─────────────────────────────────────────────────────────────
+# requirements.txt — Pinned production dependencies
+# Generated from: pip freeze (Django 6.0.2 environment)
+# To reinstall:   pip install -r requirements.txt
+# ─────────────────────────────────────────────────────────────
+
+# Core framework
+Django==6.0.2
+djangorestframework==3.16.1
+
+# CORS & Filtering
+django-cors-headers==4.9.0
+django-filter==25.2
+
+# Database
+mysqlclient==2.2.8
+
+# Elasticsearch
+django-elasticsearch-dsl==9.0
+elasticsearch==9.3.0
+
+# Production WSGI server (Windows)
+waitress==3.0.2
