@@ -6,22 +6,22 @@ class User(AbstractUser):
     failed_login_attempts = models.PositiveIntegerField(default=0)
 
 class Patient(models.Model):
-    mrn = models.CharField(max_length=50)
-    name = models.CharField(max_length=255)
+    mrn = models.CharField(max_length=50, db_index=True)
+    name = models.CharField(max_length=255, db_index=True)
     accession_no = models.CharField(max_length=50, unique=True)
-    modality = models.CharField(max_length=10)
+    modality = models.CharField(max_length=10, db_index=True)
     study_description = models.CharField(max_length=255, blank=True, null=True)
-    service_status = models.CharField(max_length=20) # New, Draft, Final
-    patient_type = models.CharField(max_length=10) # OP, IP
-    radiologist = models.CharField(max_length=255)
+    service_status = models.CharField(max_length=20, db_index=True) # New, Draft, Final
+    patient_type = models.CharField(max_length=10, db_index=True) # OP, IP
+    radiologist = models.CharField(max_length=255, db_index=True)
     report_path = models.CharField(max_length=500, blank=True, null=True)
-    exam_date = models.DateField()
+    exam_date = models.DateField(db_index=True)
 
 
 class UserSession(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sessions')
-    login_time = models.DateTimeField(auto_now_add=True)
-    logout_time = models.DateTimeField(null=True, blank=True)
+    login_time = models.DateTimeField(auto_now_add=True, db_index=True)
+    logout_time = models.DateTimeField(null=True, blank=True, db_index=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     
     @property

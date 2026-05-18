@@ -41,6 +41,7 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD', ''),   # Must be set in .env
         'HOST':     os.environ.get('DB_HOST',     'localhost'),
         'PORT':     os.environ.get('DB_PORT',     '3306'),
+        'CONN_MAX_AGE': 600,
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
@@ -72,7 +73,7 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
 # ─────────────────────────────────────────────
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': os.environ.get('ELASTICSEARCH_HOST', 'http://localhost:9200')
+        'hosts': os.environ.get('ELASTICSEARCH_HOST', 'http://127.0.0.1:9201')
     },
 }
 
