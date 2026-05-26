@@ -4,7 +4,7 @@ import time
 
 def get_doc_count():
     try:
-        url = "http://127.0.0.1:9201/patients/_count"
+        url = "http://127.0.0.1:9200/patients/_count"
         res = urllib.request.urlopen(url)
         data = json.loads(res.read().decode())
         return data.get('count', 0)
@@ -14,7 +14,7 @@ def get_doc_count():
 
 def restore_refresh():
     try:
-        url = "http://127.0.0.1:9201/patients/_settings"
+        url = "http://127.0.0.1:9200/patients/_settings"
         req = urllib.request.Request(
             url,
             data=json.dumps({"index": {"refresh_interval": "1s"}}).encode(),

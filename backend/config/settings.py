@@ -82,7 +82,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'old_lab_report',
-        'USER': 'report',
+        'USER': 'root',
         'PASSWORD': 'Kims@123',
         'HOST': 'localhost',
         'PORT': '3306',
@@ -155,7 +155,7 @@ CORS_ALLOWED_ORIGINS = [
 # Elasticsearch Configuration
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': 'http://127.0.0.1:9201'
+        'hosts': 'http://127.0.0.1:9200'
     },
 }
 

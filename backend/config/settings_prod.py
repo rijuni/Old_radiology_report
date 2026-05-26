@@ -73,7 +73,7 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
 # ─────────────────────────────────────────────
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': os.environ.get('ELASTICSEARCH_HOST', 'http://127.0.0.1:9201')
+        'hosts': os.environ.get('ELASTICSEARCH_HOST', 'http://127.0.0.1:9200')
     },
 }
 

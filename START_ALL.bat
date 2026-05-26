@@ -29,8 +29,8 @@ goto start_es
 :start_es
 :: -- Start Elasticsearch --
 echo.
-echo  [1/3] Starting Elasticsearch (port 9201)...
-netstat -ano | find ":9201 " >nul
+echo  [1/3] Starting Elasticsearch (port 9200)...
+netstat -ano | find ":9200 " >nul
 if %errorlevel% equ 0 (
     echo  Elasticsearch is ALREADY RUNNING in the background. Skipping startup.
 ) else (
@@ -77,7 +77,7 @@ timeout /t 5 /nobreak >nul
 
 echo.
 echo  ================================================
-echo   Elasticsearch : http://localhost:9201
+echo   Elasticsearch : http://localhost:9200
 echo   Backend       : http://localhost:8000
 echo   Frontend      : http://localhost:5173
 echo  ================================================
